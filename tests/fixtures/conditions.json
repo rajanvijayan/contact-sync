@@ -1,0 +1,78 @@
+{
+	"rules": [
+		{ "operator": "equals", "actual": "Other", "expected": "other", "result": true },
+		{ "operator": "equals", "actual": " other ", "expected": "other", "result": true },
+		{ "operator": "equals", "actual": "new", "expected": "other", "result": false },
+		{ "operator": "not_equals", "actual": "new", "expected": "other", "result": true },
+		{ "operator": "contains", "actual": "Enterprise plan", "expected": "enterprise", "result": true },
+		{ "operator": "contains", "actual": "anything", "expected": "", "result": false },
+		{ "operator": "not_contains", "actual": "Basic", "expected": "enterprise", "result": true },
+		{ "operator": "empty", "actual": "", "expected": "", "result": true },
+		{ "operator": "empty", "actual": "  ", "expected": "", "result": true },
+		{ "operator": "not_empty", "actual": "x", "expected": "", "result": true },
+		{ "operator": "gt", "actual": "150", "expected": "100", "result": true },
+		{ "operator": "gt", "actual": "abc", "expected": "100", "result": false },
+		{ "operator": "lt", "actual": "5", "expected": "10", "result": true },
+		{ "operator": "lt", "actual": "", "expected": "10", "result": false },
+		{ "operator": "in", "actual": "B", "expected": "a, b, c", "result": true },
+		{ "operator": "in", "actual": "d", "expected": "a,b,c", "result": false },
+		{ "operator": "equals", "actual": [ "email", "phone" ], "expected": "phone", "result": true },
+		{ "operator": "contains", "actual": [ "email" ], "expected": "phone", "result": false },
+		{ "operator": "not_contains", "actual": [ "email" ], "expected": "phone", "result": true },
+		{ "operator": "empty", "actual": [], "expected": "", "result": true },
+		{ "operator": "not_empty", "actual": [ "x" ], "expected": "", "result": true },
+		{ "operator": "in", "actual": [ "x", "y" ], "expected": "y,z", "result": true },
+		{ "operator": "gt", "actual": [ "5" ], "expected": "1", "result": false },
+		{ "operator": "unknown", "actual": "a", "expected": "a", "result": false }
+	],
+	"forms": [
+		{
+			"name": "show when equals",
+			"fields": [
+				{ "type": "select", "key": "interest" },
+				{ "type": "text", "key": "other", "conditions": { "enabled": true, "action": "show", "match": "all", "rules": [ { "field": "interest", "operator": "equals", "value": "other" } ] } }
+			],
+			"cases": [
+				{ "values": { "interest": "other" }, "visible": { "interest": true, "other": true } },
+				{ "values": { "interest": "new" }, "visible": { "interest": true, "other": false } },
+				{ "values": {}, "visible": { "interest": true, "other": false } }
+			]
+		},
+		{
+			"name": "hide action and any match",
+			"fields": [
+				{ "type": "text", "key": "country" },
+				{ "type": "number", "key": "employees" },
+				{ "type": "text", "key": "vat", "conditions": { "enabled": true, "action": "hide", "match": "any", "rules": [ { "field": "country", "operator": "equals", "value": "US" }, { "field": "employees", "operator": "lt", "value": "10" } ] } }
+			],
+			"cases": [
+				{ "values": { "country": "UK", "employees": "50" }, "visible": { "country": true, "employees": true, "vat": true } },
+				{ "values": { "country": "us", "employees": "50" }, "visible": { "country": true, "employees": true, "vat": false } },
+				{ "values": { "country": "UK", "employees": "3" }, "visible": { "country": true, "employees": true, "vat": false } }
+			]
+		},
+		{
+			"name": "section hides its fields and chained conditions",
+			"fields": [
+				{ "type": "checkbox", "key": "has_project" },
+				{ "type": "section", "key": "project", "conditions": { "enabled": true, "action": "show", "match": "all", "rules": [ { "field": "has_project", "operator": "not_empty", "value": "" } ] } },
+				{ "type": "select", "key": "budget" },
+				{ "type": "text", "key": "budget_note", "conditions": { "enabled": true, "action": "show", "match": "all", "rules": [ { "field": "budget", "operator": "equals", "value": "high" } ] } },
+				{ "type": "section", "key": "contact" },
+				{ "type": "text", "key": "phone" }
+			],
+			"cases": [
+				{ "values": { "has_project": "1", "budget": "high" }, "visible": { "has_project": true, "project": true, "budget": true, "budget_note": true, "contact": true, "phone": true } },
+				{ "values": { "has_project": "", "budget": "high" }, "visible": { "has_project": true, "project": false, "budget": false, "budget_note": false, "contact": true, "phone": true } }
+			]
+		},
+		{
+			"name": "disabled conditions are ignored",
+			"fields": [
+				{ "type": "text", "key": "a" },
+				{ "type": "text", "key": "b", "conditions": { "enabled": false, "action": "show", "match": "all", "rules": [ { "field": "a", "operator": "equals", "value": "x" } ] } }
+			],
+			"cases": [ { "values": { "a": "y" }, "visible": { "a": true, "b": true } } ]
+		}
+	]
+}

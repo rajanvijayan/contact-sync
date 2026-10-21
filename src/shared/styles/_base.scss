@@ -1,0 +1,191 @@
+.cs-root {
+	font-family: var(--cs-font);
+	font-size: 14px;
+	line-height: 1.5;
+	color: var(--cs-text);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	font-feature-settings: "cv11", "ss01";
+
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4,
+	p {
+		margin: 0;
+		padding: 0;
+		color: inherit;
+		font-family: inherit;
+	}
+
+	a {
+		color: var(--cs-brand-600);
+		text-decoration: none;
+
+		&:hover {
+			color: var(--cs-brand-700);
+			text-decoration: underline;
+		}
+
+		&:focus {
+			box-shadow: none;
+		}
+	}
+
+	code {
+		font-family: var(--cs-mono);
+		font-size: 12px;
+		background: var(--cs-surface-2);
+		border: 1px solid var(--cs-border);
+		padding: 1px 6px;
+		border-radius: 4px;
+		color: var(--cs-text-2);
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--cs-brand);
+		outline-offset: 2px;
+	}
+
+	button {
+		font-family: inherit;
+	}
+}
+
+.cs-icon {
+	flex-shrink: 0;
+	display: block;
+}
+
+.cs-boot {
+	min-height: 60vh;
+	display: grid;
+	place-items: center;
+}
+
+.cs-boot__spinner,
+.cs-spinner {
+	display: inline-block;
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	border: 2px solid var(--cs-brand-100, #dbeafe);
+	border-top-color: var(--cs-brand, #2563eb);
+	animation: cs-spin 0.7s linear infinite;
+	flex-shrink: 0;
+}
+
+@keyframes cs-spin {
+
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes cs-pulse {
+
+	50% {
+		opacity: 0.45;
+	}
+}
+
+@keyframes cs-fade-in {
+
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes cs-pop-in {
+
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.98);
+	}
+}
+
+@keyframes cs-slide-in {
+
+	from {
+		transform: translateX(100%);
+	}
+}
+
+@keyframes cs-shimmer {
+
+	to {
+		background-position: -200% 0;
+	}
+}
+
+.cs-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+}
+
+.cs-muted {
+	color: var(--cs-muted);
+}
+
+.cs-mono {
+	font-family: var(--cs-mono);
+	font-size: 12px;
+}
+
+.cs-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.cs-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.cs-grow {
+	flex: 1;
+	min-width: 0;
+}
+
+.cs-tone--brand {
+	background: var(--cs-brand-50);
+	color: var(--cs-brand-600);
+}
+
+.cs-tone--success {
+	background: var(--cs-success-bg);
+	color: var(--cs-success);
+}
+
+.cs-tone--warning {
+	background: var(--cs-warning-bg);
+	color: var(--cs-warning);
+}
+
+.cs-tone--danger {
+	background: var(--cs-danger-bg);
+	color: var(--cs-danger);
+}
+
+.cs-tone--info {
+	background: var(--cs-info-bg);
+	color: var(--cs-info);
+}
+
+.cs-tone--neutral {
+	background: var(--cs-surface-2);
+	color: var(--cs-muted);
+}

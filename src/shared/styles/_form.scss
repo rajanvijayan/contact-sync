@@ -1,0 +1,66 @@
+/* Rendered lead form */
+.cs-form-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 20px 16px;
+}
+
+.cs-form-cell--full {
+	grid-column: 1 / -1;
+}
+
+.cs-form-cell--half {
+	grid-column: span 1;
+}
+
+.cs-form-section {
+	grid-column: 1 / -1;
+	padding-top: 8px;
+
+	&:not(:first-child) {
+		border-top: 1px solid var(--cs-border);
+		padding-top: 24px;
+		margin-top: 4px;
+	}
+}
+
+.cs-root .cs-form-section__title {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--cs-text);
+}
+
+.cs-root .cs-form-section__desc {
+	color: var(--cs-muted);
+	font-size: 14px;
+	margin-top: 2px;
+}
+
+.cs-root .cs-form-divider {
+	grid-column: 1 / -1;
+	border: 0;
+	border-top: 1px solid var(--cs-border);
+	margin: 4px 0;
+	height: 0;
+}
+
+.cs-form-hidden-note {
+	font-size: 12px;
+	color: var(--cs-muted);
+	background: var(--cs-surface-2);
+	border: 1px dashed var(--cs-border-strong);
+	border-radius: var(--cs-radius);
+	padding: 8px 12px;
+	font-family: var(--cs-mono);
+}
+
+@media (max-width: 640px) {
+
+	.cs-form-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.cs-form-cell--half {
+		grid-column: 1 / -1;
+	}
+}

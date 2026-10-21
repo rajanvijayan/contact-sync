@@ -1,0 +1,212 @@
+/* Shared layout helpers and page widgets used by both apps. */
+.cs-mb {
+	margin-bottom: 24px;
+}
+
+.cs-mt {
+	margin-top: 24px;
+}
+
+.cs-grid-2 {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 24px;
+
+	@media (max-width: 1100px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.cs-grid-3-1 {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+	gap: 24px;
+
+	@media (max-width: 1100px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.cs-two-col {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+
+	@media (max-width: 520px) {
+		grid-template-columns: 1fr;
+	}
+}
+
+.cs-narrow {
+	max-width: 860px;
+}
+
+.cs-row--center {
+	justify-content: center;
+}
+
+.cs-truncate {
+	display: inline-block;
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	vertical-align: bottom;
+}
+
+.cs-nowrap {
+	white-space: nowrap;
+}
+
+.cs-card-inset {
+	padding: 16px 16px 0;
+}
+
+.cs-table-note {
+	padding: 12px 16px;
+	font-size: 13px;
+	color: var(--cs-muted);
+	border-top: 1px solid var(--cs-border);
+}
+
+.cs-badge .cs-badge__clear.cs-btn {
+	width: 18px;
+	height: 18px;
+	margin-right: -4px;
+	color: inherit;
+}
+
+.cs-source {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--cs-muted);
+	font-size: 13px;
+}
+
+/* Chart */
+.cs-chart {
+	position: relative;
+	width: 100%;
+
+	svg {
+		display: block;
+		overflow: visible;
+	}
+}
+
+.cs-chart__grid {
+	stroke: var(--cs-border);
+	stroke-dasharray: 3 3;
+}
+
+.cs-chart__baseline {
+	stroke: var(--cs-border-strong);
+}
+
+.cs-chart__axis {
+	font-size: 11px;
+	fill: var(--cs-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.cs-chart__bar {
+	fill: var(--cs-brand);
+}
+
+.cs-chart__hover {
+	fill: var(--cs-brand);
+	opacity: 0.06;
+	pointer-events: none;
+}
+
+.cs-chart__tooltip {
+	position: absolute;
+	top: -4px;
+	min-width: 140px;
+	background: var(--cs-surface);
+	border: 1px solid var(--cs-border);
+	box-shadow: var(--cs-shadow-lg);
+	border-radius: var(--cs-radius);
+	padding: 8px 10px;
+	pointer-events: none;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+	z-index: 2;
+}
+
+.cs-chart__tooltip-date {
+	color: var(--cs-muted);
+}
+
+.cs-chart__tooltip-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--cs-text-2);
+
+	strong {
+		margin-left: auto;
+		color: var(--cs-text);
+		font-variant-numeric: tabular-nums;
+	}
+}
+
+.cs-chart__swatch {
+	width: 8px;
+	height: 8px;
+	border-radius: 2px;
+	background: var(--cs-brand);
+}
+
+/* Ranked list */
+.cs-root .cs-rank {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.cs-root .cs-rank__item {
+	margin: 0;
+}
+
+.cs-rank__head {
+	display: flex;
+	justify-content: space-between;
+	font-size: 13px;
+	margin-bottom: 6px;
+	gap: 8px;
+}
+
+.cs-rank__name {
+	color: var(--cs-text-2);
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cs-rank__value {
+	color: var(--cs-text);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.cs-rank__track {
+	height: 6px;
+	background: var(--cs-surface-2);
+	border-radius: 999px;
+	overflow: hidden;
+
+	span {
+		display: block;
+		height: 100%;
+		background: var(--cs-brand);
+		border-radius: 999px;
+	}
+}

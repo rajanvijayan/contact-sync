@@ -1,0 +1,16 @@
+/.git
+/.github
+/node_modules
+/src
+/tests
+/bin
+/docs
+.gitignore
+.distignore
+composer.json
+composer.lock
+package.json
+package-lock.json
+phpcs.xml
+phpunit.xml.dist
+jest.config.js

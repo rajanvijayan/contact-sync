@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<ruleset name="Contact Sync">
+	<description>Coding standards for Contact Sync.</description>
+	<file>./contact-sync.php</file>
+	<file>./includes</file>
+	<file>./templates</file>
+	<arg name="extensions" value="php"/>
+	<arg value="sp"/>
+	<config name="minimum_supported_wp_version" value="6.2"/>
+	<config name="testVersion" value="7.4-"/>
+	<rule ref="WordPress">
+		<exclude name="WordPress.Files.FileName"/>
+		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+		<exclude name="WordPress.DB.DirectDatabaseQuery.DirectQuery"/>
+		<exclude name="WordPress.DB.DirectDatabaseQuery.NoCaching"/>
+		<exclude name="WordPress.DB.DirectDatabaseQuery.SchemaChange"/>
+		<exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+		<exclude name="WordPress.DB.SlowDBQuery"/>
+	</rule>
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array" value="contact-sync"/>
+		</properties>
+	</rule>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array" value="contact_sync,ContactSync,CONTACT_SYNC"/>
+		</properties>
+	</rule>
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array" value="manage_contact_sync,cs_submit_leads,cs_view_agency_leads"/>
+		</properties>
+	</rule>
+</ruleset>
