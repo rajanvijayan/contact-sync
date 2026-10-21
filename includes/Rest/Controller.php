@@ -134,6 +134,9 @@ abstract class Controller {
 	 * @return string
 	 */
 	public static function csv_safe( $value ) {
+		if ( is_int( $value ) || is_float( $value ) ) {
+			return (string) $value;
+		}
 		$value = is_array( $value ) ? implode( '; ', $value ) : (string) $value;
 		if ( '' !== $value && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
 			$value = "'" . $value;

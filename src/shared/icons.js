@@ -363,6 +363,24 @@ const PATHS = {
 			<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4" />
 		</>
 	),
+	trendUp: (
+		<>
+			<path d="M3 17l6-6 4 4 8-8" />
+			<path d="M15 7h6v6" />
+		</>
+	),
+	trendDown: (
+		<>
+			<path d="M3 7l6 6 4-4 8 8" />
+			<path d="M15 17h6v-6" />
+		</>
+	),
+	chart: (
+		<>
+			<path d="M3 3v18h18" />
+			<path d="M8 17v-5M13 17V8M18 17v-9" />
+		</>
+	),
 	inbox: (
 		<>
 			<path d="M22 12h-6l-2 3h-4l-2-3H2" />

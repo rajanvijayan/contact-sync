@@ -50,6 +50,7 @@ class Menu {
 		$items = array(
 			'dashboard'   => __( 'Dashboard', 'contact-sync' ),
 			'submissions' => __( 'Submissions', 'contact-sync' ),
+			'reports'     => __( 'Reports', 'contact-sync' ),
 			'agencies'    => __( 'Agencies', 'contact-sync' ),
 			'reps'        => __( 'Reps', 'contact-sync' ),
 			'forms'       => __( 'Forms', 'contact-sync' ),

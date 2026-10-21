@@ -71,6 +71,7 @@ final class Plugin {
 			new Rest\RepsController(),
 			new Rest\FormsController(),
 			new Rest\SubmissionsController(),
+			new Rest\ReportsController(),
 			new Rest\SettingsController(),
 		);
 		foreach ( $controllers as $controller ) {

@@ -10,6 +10,7 @@ import Reps from './Reps';
 import Forms from './Forms';
 import Builder from './builder/Builder';
 import Submissions from './Submissions';
+import Reports from './Reports';
 import Settings from './Settings';
 
 const NAV = [
@@ -22,6 +23,11 @@ const NAV = [
 		id: 'submissions',
 		icon: 'inbox',
 		label: __( 'Submissions', 'contact-sync' ),
+	},
+	{
+		id: 'reports',
+		icon: 'chart',
+		label: __( 'Reports', 'contact-sync' ),
 	},
 	{
 		id: 'agencies',
@@ -65,6 +71,9 @@ export default function AdminApp() {
 	switch ( section ) {
 		case 'submissions':
 			page = <Submissions />;
+			break;
+		case 'reports':
+			page = <Reports />;
 			break;
 		case 'agencies':
 			page = <Agencies />;
