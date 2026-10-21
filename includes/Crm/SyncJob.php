@@ -119,6 +119,33 @@ class SyncJob {
 	}
 
 	/**
+	 * Re-queue leads that were held back while Dynamics 365 was not connected.
+	 *
+	 * Also recovers leads that an earlier version marked failed only because the
+	 * connection was missing.
+	 *
+	 * @return int Number queued.
+	 */
+	public function release_waiting() {
+		global $wpdb;
+		$subs     = Db::table( 'submissions' );
+		$messages = array_unique( array( 'The Dynamics 365 connection is not configured.', __( 'The Dynamics 365 connection is not configured.', 'contact-sync' ) ) );
+		$in       = implode( ', ', array_fill( 0, count( $messages ), '%s' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.DirectDatabaseQuery
+		$wpdb->query( $wpdb->prepare( "UPDATE {$subs} SET sync_status = 'queued', attempts = 0, last_error = NULL WHERE sync_status = 'failed' AND last_error IN ({$in})", $messages ) );
+
+		if ( ! Settings::dynamics_configured() ) {
+			return 0;
+		}
+
+		$ids = $this->repo->ids( array( 'status' => 'queued' ) );
+		foreach ( $ids as $id ) {
+			self::queue( $id );
+		}
+		return count( $ids );
+	}
+
+	/**
 	 * Sync one submission.
 	 *
 	 * @param int $submission_id Submission ID.
@@ -128,8 +155,8 @@ class SyncJob {
 		if ( ! $row || in_array( $row['sync_status'], array( 'synced', 'duplicate' ), true ) ) {
 			return;
 		}
-		if ( ! Settings::get( 'sync.enabled', true ) ) {
-			// Paused: stay queued; "Sync queued leads" in the admin resumes them.
+		if ( ! Settings::get( 'sync.enabled', true ) || ! Settings::dynamics_configured() ) {
+			// Paused or not connected yet: stay queued; release_waiting() picks them up later.
 			return;
 		}
 

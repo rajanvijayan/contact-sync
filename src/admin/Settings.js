@@ -2,6 +2,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import { get, post, put } from '../shared/api';
 import Icon from '../shared/icons';
+import { setCrmConnected } from '../shared/format';
 import {
 	Alert,
 	Badge,
@@ -138,6 +139,14 @@ export default function Settings() {
 			setSettings( result );
 			setOriginal( JSON.stringify( result ) );
 			setSecret( '' );
+			setCrmConnected(
+				!! (
+					result.dynamics.org_url &&
+					result.dynamics.tenant_id &&
+					result.dynamics.client_id &&
+					result.dynamics.has_secret
+				)
+			);
 			toast( __( 'Settings saved', 'contact-sync' ) );
 			if ( result.branding.primary_color ) {
 				document

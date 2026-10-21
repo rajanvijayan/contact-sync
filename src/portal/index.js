@@ -1,6 +1,8 @@
-import { createRoot } from '@wordpress/element';
+import { createRoot, useEffect } from '@wordpress/element';
+import { setCrmConnected } from '../shared/format';
 import { UIProvider } from '../shared/ui';
 import config from './config';
+import { usePath } from './router';
 import Login from './auth/Login';
 import Signup from './auth/Signup';
 import Verify from './auth/Verify';
@@ -18,12 +20,33 @@ const SCREENS = {
 	app: AppShell,
 };
 
+setCrmConnected( config.crmConnected );
+
+/**
+ * Pick the screen from the current path so in-app links between the sign-in
+ * screens swap the view instead of only changing the URL.
+ */
+function Root() {
+	const route = usePath().split( '/' )[ 0 ] || config.route;
+	const crossesAuth = ( route === 'app' ) !== ( config.route === 'app' );
+	useEffect( () => {
+		// The app and the sign-in screens are gated server side; let it decide.
+		if ( crossesAuth ) {
+			window.location.reload();
+		}
+	}, [ crossesAuth ] );
+	if ( crossesAuth ) {
+		return null;
+	}
+	const Screen = SCREENS[ route ] || SCREENS[ config.route ] || Login;
+	return <Screen />;
+}
+
 const mount = document.getElementById( 'contact-sync-portal' );
 if ( mount ) {
-	const Screen = SCREENS[ config.route ] || Login;
 	createRoot( mount ).render(
 		<UIProvider>
-			<Screen />
+			<Root />
 		</UIProvider>
 	);
 }

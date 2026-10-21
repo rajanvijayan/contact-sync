@@ -8,6 +8,45 @@ export const STATUS = {
 	duplicate: { label: __( 'Duplicate', 'contact-sync' ), tone: 'warning' },
 };
 
+const AWAITING = {
+	label: __( 'Awaiting connection', 'contact-sync' ),
+	tone: 'neutral',
+};
+
+let crmConnected = true;
+
+/**
+ * Record whether Dynamics 365 is connected, which changes how pending leads read.
+ *
+ * @param {boolean} connected Connected.
+ */
+export function setCrmConnected( connected ) {
+	crmConnected = connected !== false;
+}
+
+/**
+ * Whether Dynamics 365 is connected.
+ *
+ * @return {boolean} Connected.
+ */
+export function isCrmConnected() {
+	return crmConnected;
+}
+
+/**
+ * Label and tone for a sync status. Leads can't fail before Dynamics is
+ * connected, so queued and failed both read as waiting until it is.
+ *
+ * @param {string} status Sync status.
+ * @return {{label: string, tone: string}} Display meta.
+ */
+export function statusMeta( status ) {
+	if ( ! crmConnected && ( status === 'queued' || status === 'failed' ) ) {
+		return AWAITING;
+	}
+	return STATUS[ status ] || { label: status, tone: 'neutral' };
+}
+
 export const REP_STATUS = {
 	active: { label: __( 'Active', 'contact-sync' ), tone: 'success' },
 	pending: {

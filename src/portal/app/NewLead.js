@@ -6,6 +6,7 @@ import FormRenderer, {
 	validateClient,
 } from '../../shared/FormRenderer';
 import Icon from '../../shared/icons';
+import { isCrmConnected } from '../../shared/format';
 import { useInterval } from '../../shared/hooks';
 import {
 	Alert,
@@ -23,7 +24,8 @@ const FINAL = [ 'synced', 'failed', 'duplicate' ];
 function SubmittedPanel( { submission, message, onAnother } ) {
 	const [ item, setItem ] = useState( submission );
 	const [ polls, setPolls ] = useState( 0 );
-	const polling = ! FINAL.includes( item.status ) && polls < 40;
+	const polling =
+		isCrmConnected() && ! FINAL.includes( item.status ) && polls < 40;
 
 	useInterval(
 		() => {
@@ -37,10 +39,15 @@ function SubmittedPanel( { submission, message, onAnother } ) {
 	);
 
 	const info = {
-		queued: __(
-			'Your lead is queued and will be sent to Dynamics 365 in a moment.',
-			'contact-sync'
-		),
+		queued: isCrmConnected()
+			? __(
+					'Your lead is queued and will be sent to Dynamics 365 in a moment.',
+					'contact-sync'
+			  )
+			: __(
+					'Your lead is saved and will be sent to Dynamics 365 once the connection is set up.',
+					'contact-sync'
+			  ),
 		syncing: __( 'Sending your lead to Dynamics 365…', 'contact-sync' ),
 		synced: __(
 			'Your lead is now in Dynamics 365 and the sales team has been notified.',

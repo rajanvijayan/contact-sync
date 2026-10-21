@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 import { get, post } from '../../shared/api';
 import Icon from '../../shared/icons';
-import { ROLES } from '../../shared/format';
+import { ROLES, setCrmConnected } from '../../shared/format';
 import { Alert, Avatar, Badge, Menu, Spinner, cx } from '../../shared/ui';
 import { Brand } from '../auth/AuthLayout';
 import config, { urls } from '../config';
@@ -21,7 +21,13 @@ export default function AppShell() {
 	const [ navOpen, setNavOpen ] = useState( false );
 
 	const reload = useCallback(
-		() => get( '/portal/me' ).then( setMe ).catch( setError ),
+		() =>
+			get( '/portal/me' )
+				.then( ( data ) => {
+					setCrmConnected( data.crm_connected );
+					setMe( data );
+				} )
+				.catch( setError ),
 		[]
 	);
 

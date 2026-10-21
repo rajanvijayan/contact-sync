@@ -1,13 +1,28 @@
 import { __ } from '@wordpress/i18n';
 import Icon from '../../shared/icons';
-import { displayValue, formatDate } from '../../shared/format';
+import { displayValue, formatDate, isCrmConnected } from '../../shared/format';
 import { Alert, Badge, CopyButton, Drawer, StatusBadge } from '../../shared/ui';
 import { leadName } from './Dashboard';
 
 export function SubmissionDetails( { item, admin = false } ) {
+	const awaiting =
+		! isCrmConnected() && [ 'queued', 'failed' ].includes( item.status );
 	return (
 		<>
-			{ item.status === 'failed' && item.last_error && (
+			{ awaiting && (
+				<div className="cs-mb">
+					<Alert
+						tone="info"
+						title={ __( 'Awaiting connection', 'contact-sync' ) }
+					>
+						{ __(
+							'This lead is saved and will be sent to Dynamics 365 automatically once the connection is set up.',
+							'contact-sync'
+						) }
+					</Alert>
+				</div>
+			) }
+			{ ! awaiting && item.status === 'failed' && item.last_error && (
 				<div className="cs-mb">
 					<Alert
 						tone="danger"

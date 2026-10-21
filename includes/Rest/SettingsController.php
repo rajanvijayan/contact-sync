@@ -10,7 +10,6 @@ namespace ContactSync\Rest;
 use ContactSync\Crm\CrmException;
 use ContactSync\Crm\DynamicsClient;
 use ContactSync\Crm\SyncJob;
-use ContactSync\Submissions\SubmissionRepository;
 use ContactSync\Support\Mailer;
 use ContactSync\Support\Settings;
 use WP_Error;
@@ -86,7 +85,11 @@ class SettingsController extends Controller {
 	 * @return mixed
 	 */
 	public function update( WP_REST_Request $request ) {
+		$was_ready = Settings::dynamics_configured() && Settings::get( 'sync.enabled', true );
 		Settings::update( (array) $request->get_json_params() );
+		if ( ! $was_ready && Settings::dynamics_configured() && Settings::get( 'sync.enabled', true ) ) {
+			( new SyncJob() )->release_waiting();
+		}
 		return $this->respond( Settings::for_admin() );
 	}
 
@@ -143,10 +146,6 @@ class SettingsController extends Controller {
 	 * @return mixed
 	 */
 	public function sync_queued() {
-		$ids = ( new SubmissionRepository() )->ids( array( 'status' => 'queued' ) );
-		foreach ( $ids as $id ) {
-			SyncJob::queue( $id );
-		}
-		return $this->respond( array( 'queued' => count( $ids ) ) );
+		return $this->respond( array( 'queued' => ( new SyncJob() )->release_waiting() ) );
 	}
 }

@@ -1188,8 +1188,7 @@
 }
 
 .cs-menu__panel {
-	position: absolute;
-	top: calc(100% + 6px);
+	position: fixed;
 	min-width: 200px;
 	background: var(--cs-surface);
 	border: 1px solid var(--cs-border);
@@ -1198,14 +1197,6 @@
 	padding: 4px;
 	z-index: 1000;
 	animation: cs-pop-in 0.12s var(--cs-ease);
-
-	&--right {
-		right: 0;
-	}
-
-	&--left {
-		left: 0;
-	}
 }
 
 .cs-root .cs-menu__item {

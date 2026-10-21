@@ -16,15 +16,19 @@ defined( 'ABSPATH' ) || exit;
  */
 class Schema {
 
-	const DB_VERSION = '1.0.0';
+	const DB_VERSION = '1.0.1';
 	const OPTION     = 'contact_sync_db_version';
 
 	/**
 	 * Run dbDelta when the stored schema version is behind.
 	 */
 	public static function maybe_upgrade() {
-		if ( get_option( self::OPTION ) !== self::DB_VERSION ) {
+		$from = get_option( self::OPTION );
+		if ( self::DB_VERSION !== $from ) {
 			self::install();
+			if ( $from && version_compare( $from, '1.0.1', '<' ) ) {
+				( new \ContactSync\Crm\SyncJob() )->release_waiting();
+			}
 		}
 	}
 

@@ -23,12 +23,16 @@ const niceMax = ( value ) => {
  * @param {string}   props.valueKey Value key.
  * @param {string}   props.label    Series label for tooltip/table.
  * @param {number}   props.height   Chart height.
+ * @param {Function} props.tick     Axis label for a row (defaults to "Oct 14").
+ * @param {Function} props.title    Tooltip/table heading for a row.
  */
 export default function BarChart( {
 	data = [],
 	valueKey = 'total',
 	label = __( 'Leads', 'contact-sync' ),
 	height = 200,
+	tick,
+	title,
 } ) {
 	const wrap = useRef();
 	const [ width, setWidth ] = useState( 600 );
@@ -54,6 +58,17 @@ export default function BarChart( {
 	const barW = Math.max( 4, Math.min( 28, slot - 6 ) );
 	const fmtDay = ( iso, opts ) =>
 		new Date( `${ iso }T00:00:00` ).toLocaleDateString( undefined, opts );
+	const tickLabel =
+		tick ||
+		( ( d ) => fmtDay( d.date, { month: 'short', day: 'numeric' } ) );
+	const titleLabel =
+		title ||
+		( ( d ) =>
+			fmtDay( d.date, {
+				weekday: 'short',
+				month: 'short',
+				day: 'numeric',
+			} ) );
 	const labelEvery = Math.ceil(
 		data.length / Math.max( 1, Math.floor( innerW / 56 ) )
 	);
@@ -66,10 +81,10 @@ export default function BarChart( {
 				role="img"
 				aria-label={ label }
 			>
-				{ ticks.map( ( tick ) => {
-					const y = padding.top + innerH - ( tick / max ) * innerH;
+				{ ticks.map( ( value ) => {
+					const y = padding.top + innerH - ( value / max ) * innerH;
 					return (
-						<g key={ tick }>
+						<g key={ value }>
 							<line
 								x1={ padding.left }
 								x2={ width - padding.right }
@@ -84,9 +99,9 @@ export default function BarChart( {
 								textAnchor="end"
 								className="cs-chart__axis"
 							>
-								{ Number.isInteger( tick )
-									? tick
-									: tick.toFixed( 1 ) }
+								{ Number.isInteger( value )
+									? value
+									: value.toFixed( 1 ) }
 							</text>
 						</g>
 					);
@@ -138,10 +153,7 @@ export default function BarChart( {
 									textAnchor="middle"
 									className="cs-chart__axis"
 								>
-									{ fmtDay( d.date, {
-										month: 'short',
-										day: 'numeric',
-									} ) }
+									{ tickLabel( d ) }
 								</text>
 							) }
 						</g>
@@ -169,11 +181,7 @@ export default function BarChart( {
 					} }
 				>
 					<span className="cs-chart__tooltip-date">
-						{ fmtDay( data[ hover ].date, {
-							weekday: 'short',
-							month: 'short',
-							day: 'numeric',
-						} ) }
+						{ titleLabel( data[ hover ] ) }
 					</span>
 					<span className="cs-chart__tooltip-row">
 						<span className="cs-chart__swatch" />
@@ -182,17 +190,19 @@ export default function BarChart( {
 					</span>
 				</div>
 			) }
-			<table className="cs-sr-only">
-				<caption>{ label }</caption>
-				<tbody>
-					{ data.map( ( d ) => (
-						<tr key={ d.date }>
-							<th scope="row">{ d.date }</th>
-							<td>{ d[ valueKey ] }</td>
-						</tr>
-					) ) }
-				</tbody>
-			</table>
+			<div className="cs-sr-only">
+				<table>
+					<caption>{ label }</caption>
+					<tbody>
+						{ data.map( ( d ) => (
+							<tr key={ d.date }>
+								<th scope="row">{ titleLabel( d ) }</th>
+								<td>{ d[ valueKey ] }</td>
+							</tr>
+						) ) }
+					</tbody>
+				</table>
+			</div>
 		</div>
 	);
 }

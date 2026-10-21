@@ -14,6 +14,7 @@ use ContactSync\Import\SampleCsv;
 use ContactSync\Reps\RepService;
 use ContactSync\Submissions\SubmissionRepository;
 use ContactSync\Submissions\SubmissionService;
+use ContactSync\Support\Settings;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Server;
@@ -117,10 +118,11 @@ class PortalController extends Controller {
 
 		return $this->respond(
 			array(
-				'user'   => ( new RepService() )->profile( $user ),
-				'form'   => $form,
-				'stats'  => $repo->stats( $scope, 14 ),
-				'recent' => $repo->query( array_merge( $scope, array( 'per_page' => 5 ) ) )['items'],
+				'user'          => ( new RepService() )->profile( $user ),
+				'form'          => $form,
+				'stats'         => $repo->stats( $scope, 14 ),
+				'recent'        => $repo->query( array_merge( $scope, array( 'per_page' => 5 ) ) )['items'],
+				'crm_connected' => Settings::dynamics_configured(),
 			)
 		);
 	}

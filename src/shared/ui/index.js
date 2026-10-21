@@ -11,8 +11,8 @@ import {
 } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import Icon from '../icons';
-import { STATUS, initials } from '../format';
-import { useDebounced, useDismiss } from '../hooks';
+import { initials, statusMeta } from '../format';
+import { useDebounced } from '../hooks';
 
 const cx = ( ...classes ) => classes.filter( Boolean ).join( ' ' );
 export { cx };
@@ -462,7 +462,7 @@ export function Badge( {
 }
 
 export function StatusBadge( { status } ) {
-	const meta = STATUS[ status ] || { label: status, tone: 'neutral' };
+	const meta = statusMeta( status );
 	return (
 		<Badge
 			tone={ meta.tone }
@@ -998,50 +998,117 @@ export function Drawer( {
 
 export function Menu( { trigger, items, align = 'right' } ) {
 	const [ open, setOpen ] = useState( false );
+	const [ position, setPosition ] = useState( null );
 	const ref = useRef();
+	const panelRef = useRef();
 	const close = useCallback( () => setOpen( false ), [] );
-	useDismiss( ref, close, open );
+
+	// The panel renders in a portal so scrolling table wrappers can't clip it.
+	useEffect( () => {
+		if ( ! open ) {
+			setPosition( null );
+			return undefined;
+		}
+		const place = () => {
+			const anchor = ref.current?.getBoundingClientRect();
+			const panel = panelRef.current;
+			if ( ! anchor || ! panel ) {
+				return;
+			}
+			const gap = 6;
+			const width = Math.max( panel.offsetWidth, anchor.width, 200 );
+			const height = panel.offsetHeight;
+			const below = window.innerHeight - anchor.bottom;
+			const top =
+				below < height + gap && anchor.top > below
+					? anchor.top - height - gap
+					: anchor.bottom + gap;
+			let left = align === 'left' ? anchor.left : anchor.right - width;
+			left = Math.max(
+				8,
+				Math.min( left, window.innerWidth - width - 8 )
+			);
+			setPosition( {
+				top,
+				left,
+				minWidth: Math.max( anchor.width, 200 ),
+			} );
+		};
+		place();
+		const onDown = ( event ) => {
+			if (
+				! ref.current?.contains( event.target ) &&
+				! panelRef.current?.contains( event.target )
+			) {
+				close();
+			}
+		};
+		const onKey = ( event ) => event.key === 'Escape' && close();
+		document.addEventListener( 'mousedown', onDown );
+		document.addEventListener( 'keydown', onKey );
+		window.addEventListener( 'resize', close );
+		window.addEventListener( 'scroll', place, true );
+		return () => {
+			document.removeEventListener( 'mousedown', onDown );
+			document.removeEventListener( 'keydown', onKey );
+			window.removeEventListener( 'resize', close );
+			window.removeEventListener( 'scroll', place, true );
+		};
+	}, [ open, align, close ] );
+
+	const host =
+		ref.current?.closest( '.cs-root' ) || ref.current?.ownerDocument.body;
+
 	return (
 		<div className="cs-menu" ref={ ref }>
 			{ trigger( { open, toggle: () => setOpen( ! open ) } ) }
-			{ open && (
-				<div
-					className={ cx(
-						'cs-menu__panel',
-						`cs-menu__panel--${ align }`
-					) }
-					role="menu"
-				>
-					{ items.filter( Boolean ).map( ( item, index ) =>
-						item.separator ? (
-							<div
-								key={ `sep${ index }` }
-								className="cs-menu__sep"
-							/>
-						) : (
-							<button
-								key={ item.label }
-								type="button"
-								role="menuitem"
-								className={ cx(
-									'cs-menu__item',
-									item.danger && 'is-danger'
-								) }
-								onClick={ () => {
-									setOpen( false );
-									item.onClick();
-								} }
-								disabled={ item.disabled }
-							>
-								{ item.icon && (
-									<Icon name={ item.icon } size={ 16 } />
-								) }
-								{ item.label }
-							</button>
-						)
-					) }
-				</div>
-			) }
+			{ open &&
+				host &&
+				createPortal(
+					<div
+						ref={ panelRef }
+						className={ cx(
+							'cs-menu__panel',
+							`cs-menu__panel--${ align }`
+						) }
+						style={
+							position
+								? { ...position, position: 'fixed' }
+								: { position: 'fixed', visibility: 'hidden' }
+						}
+						role="menu"
+					>
+						{ items.filter( Boolean ).map( ( item, index ) =>
+							item.separator ? (
+								<div
+									key={ `sep${ index }` }
+									className="cs-menu__sep"
+								/>
+							) : (
+								<button
+									key={ item.label }
+									type="button"
+									role="menuitem"
+									className={ cx(
+										'cs-menu__item',
+										item.danger && 'is-danger'
+									) }
+									onClick={ () => {
+										setOpen( false );
+										item.onClick();
+									} }
+									disabled={ item.disabled }
+								>
+									{ item.icon && (
+										<Icon name={ item.icon } size={ 16 } />
+									) }
+									{ item.label }
+								</button>
+							)
+						) }
+					</div>,
+					host
+				) }
 		</div>
 	);
 }

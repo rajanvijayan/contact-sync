@@ -68,9 +68,9 @@ class Assets {
 		}
 		$user   = wp_get_current_user();
 		$config = array(
-			'route'    => $route,
-			'basePath' => (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ),
-			'urls'     => array(
+			'route'        => $route,
+			'basePath'     => (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ),
+			'urls'         => array(
 				'home'   => home_url( '/' ),
 				'login'  => Router::url( 'login' ),
 				'signup' => Router::url( 'signup' ),
@@ -78,9 +78,10 @@ class Assets {
 				'app'    => Router::url( 'app' ),
 				'admin'  => current_user_can( 'manage_contact_sync' ) ? admin_url( 'admin.php?page=contact-sync' ) : '',
 			),
-			'branding' => self::branding(),
-			'user'     => $user->exists() ? ( new RepService() )->profile( $user ) : null,
-			'limits'   => array(
+			'branding'     => self::branding(),
+			'crmConnected' => Settings::dynamics_configured(),
+			'user'         => $user->exists() ? ( new RepService() )->profile( $user ) : null,
+			'limits'       => array(
 				'maxRows' => (int) Settings::get( 'security.max_csv_rows', 1000 ),
 				'maxKb'   => (int) Settings::get( 'security.max_csv_kb', 2048 ),
 			),
@@ -109,6 +110,7 @@ class Assets {
 			'currentUser'   => wp_get_current_user()->display_name,
 			'permalinks'    => (bool) get_option( 'permalink_structure' ),
 			'version'       => CONTACT_SYNC_VERSION,
+			'crmConnected'  => Settings::dynamics_configured(),
 		);
 		wp_add_inline_script( 'contact-sync-admin', 'window.contactSyncAdmin = ' . wp_json_encode( $config ) . ';', 'before' );
 	}
