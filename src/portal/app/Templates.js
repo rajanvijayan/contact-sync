@@ -1,5 +1,5 @@
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import { downloadFile, get } from '../../shared/api';
 import { isInputField } from '../../shared/FormRenderer';
 import { OPERATORS } from '../../shared/conditions';
@@ -35,19 +35,26 @@ function accepted( field, fields ) {
 	switch ( field.type ) {
 		case 'select':
 		case 'radio':
-			return (
-				__( 'One of:', 'contact-sync' ) +
+			return sprintf(
+				/* translators: %s: list of allowed values */
+				__( 'One of: %s', 'contact-sync' ),
 				field.options.map( ( o ) => o.label ).join( ', ' )
 			);
 		case 'checkboxes':
-			return (
-				__( 'Any of (separate with ;):', 'contact-sync' ) +
+			return sprintf(
+				/* translators: %s: list of allowed values */
+				__( 'Any of (separate with ;): %s', 'contact-sync' ),
 				field.options.map( ( o ) => o.label ).join( ', ' )
 			);
 		case 'checkbox':
 			return __( 'yes / no', 'contact-sync' );
 		case 'date':
-			return __( 'YYYY–MM–DD (e.g. 2026–03–31)', 'contact-sync' );
+			return sprintf(
+				/* translators: 1: date format, 2: example date */
+				__( '%1$s (e.g. %2$s)', 'contact-sync' ),
+				'YYYY-MM-DD',
+				'2026-03-31'
+			);
 		case 'email':
 			return __( 'A valid email address', 'contact-sync' );
 		case 'number':

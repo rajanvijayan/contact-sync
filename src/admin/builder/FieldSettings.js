@@ -1,5 +1,5 @@
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import Icon from '../../shared/icons';
 import {
 	Field,
@@ -535,9 +535,13 @@ export default function FieldSettings( { field, fields, onChange, isNew } ) {
 											) }
 											htmlFor="cs-fs-pat"
 											optional
-											help={ __(
-												'The whole value must match, e.g. [A–Z]{2}[0–9]{4}',
-												'contact-sync'
+											help={ sprintf(
+												/* translators: %s: example pattern */
+												__(
+													'The whole value must match, e.g. %s',
+													'contact-sync'
+												),
+												'[A-Z]{2}[0-9]{4}'
 											) }
 										>
 											<Input

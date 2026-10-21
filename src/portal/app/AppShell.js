@@ -31,6 +31,20 @@ export default function AppShell() {
 
 	useEffect( () => setNavOpen( false ), [ path ] );
 
+	const titles = {
+		'app/new': __( 'New lead', 'contact-sync' ),
+		'app/bulk': __( 'Bulk upload', 'contact-sync' ),
+		'app/submissions': __( 'My submissions', 'contact-sync' ),
+		'app/agency': __( 'Agency leads', 'contact-sync' ),
+		'app/template': __( 'CSV template', 'contact-sync' ),
+	};
+	useEffect( () => {
+		document.title = `${
+			titles[ path ] || __( 'Dashboard', 'contact-sync' )
+		} · ${ config.branding?.product_name || '' }`;
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [ path ] );
+
 	const user = me?.user || config.user;
 	const nav = [
 		{

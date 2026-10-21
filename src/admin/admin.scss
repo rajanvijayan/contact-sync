@@ -905,9 +905,9 @@ body.cs-admin-screen {
 .cs-fcard__head {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	justify-content: space-between;
-	padding-right: 64px;
+	gap: 6px 8px;
+	flex-wrap: wrap;
+	padding-right: 8px;
 }
 
 .cs-fcard__label {
@@ -924,9 +924,7 @@ body.cs-admin-screen {
 .cs-fcard__badges {
 	display: flex;
 	gap: 4px;
-	flex-shrink: 1;
-	min-width: 0;
-	overflow: hidden;
+	flex-wrap: wrap;
 
 	.cs-badge {
 		height: 20px;
@@ -977,6 +975,8 @@ body.cs-admin-screen {
 	position: absolute;
 	right: 6px;
 	top: 6px;
+	box-shadow: var(--cs-shadow-sm);
+	border: 1px solid var(--cs-border);
 	display: flex;
 	gap: 2px;
 	opacity: 0;
@@ -1081,7 +1081,7 @@ body.cs-admin-screen {
 	color: var(--cs-text);
 }
 
-.cs-mb-sm {
+.cs-root .cs-mb-sm {
 	margin-bottom: 16px;
 }
 

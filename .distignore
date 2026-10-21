@@ -14,3 +14,7 @@ package-lock.json
 phpcs.xml
 phpunit.xml.dist
 jest.config.js
+.phpunit.result.cache
+.stylelintrc.json
+README.md
+/dist
