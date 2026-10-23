@@ -168,10 +168,7 @@ function RecentImports() {
 							if ( b.held ) {
 								return (
 									<Badge tone="warning" dot>
-										{ __(
-											'Awaiting connection',
-											'contact-sync'
-										) }
+										{ __( 'Pending', 'contact-sync' ) }
 									</Badge>
 								);
 							}
@@ -258,7 +255,7 @@ function ImportProgress( { result, onReset } ) {
 				{ batch.held && (
 					<Alert tone="info">
 						{ __(
-							'Your leads are saved. They will be delivered to Dynamics 365 automatically once your administrator connects or resumes the CRM sync.',
+							'Your leads are saved and will be delivered to the sales team automatically.',
 							'contact-sync'
 						) }
 					</Alert>

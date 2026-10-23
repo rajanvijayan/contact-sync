@@ -25,7 +25,7 @@ export default function AppShell() {
 		() =>
 			get( '/portal/me' )
 				.then( ( data ) => {
-					setCrmConnected( data.crm_connected );
+					setCrmConnected( data.delivery_active );
 					setMe( data );
 				} )
 				.catch( setError ),

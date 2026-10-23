@@ -68,9 +68,9 @@ class Assets {
 		}
 		$user   = wp_get_current_user();
 		$config = array(
-			'route'        => $route,
-			'basePath'     => (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ),
-			'urls'         => array(
+			'route'          => $route,
+			'basePath'       => (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ),
+			'urls'           => array(
 				'home'   => home_url( '/' ),
 				'login'  => Router::url( 'login' ),
 				'signup' => Router::url( 'signup' ),
@@ -78,10 +78,10 @@ class Assets {
 				'app'    => Router::url( 'app' ),
 				'admin'  => current_user_can( 'manage_contact_sync' ) ? admin_url( 'admin.php?page=contact-sync' ) : '',
 			),
-			'branding'     => self::branding(),
-			'crmConnected' => Settings::dynamics_configured(),
-			'user'         => $user->exists() ? ( new RepService() )->profile( $user ) : null,
-			'limits'       => array(
+			'branding'       => self::branding(),
+			'deliveryActive' => \ContactSync\Crm\SyncJob::active(),
+			'user'           => $user->exists() ? ( new RepService() )->profile( $user ) : null,
+			'limits'         => array(
 				'maxRows' => (int) Settings::get( 'security.max_csv_rows', 1000 ),
 				'maxKb'   => (int) Settings::get( 'security.max_csv_kb', 2048 ),
 			),

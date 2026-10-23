@@ -87,6 +87,21 @@ class FormSchema {
 	}
 
 	/**
+	 * Schema as sent to the portal: CRM column mappings and fixed CRM values removed,
+	 * since reps only need what to fill in.
+	 *
+	 * @param array $schema Schema.
+	 * @return array
+	 */
+	public static function for_portal( array $schema ) {
+		unset( $schema['settings']['staticValues'] );
+		foreach ( $schema['fields'] ?? array() as $i => $field ) {
+			unset( $schema['fields'][ $i ]['crm'] );
+		}
+		return $schema;
+	}
+
+	/**
 	 * Fields a rep fills in (input fields minus hidden ones). Used for CSV templates.
 	 *
 	 * @param array $schema Schema.

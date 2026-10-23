@@ -6,10 +6,7 @@ const FEATURES = [
 	{
 		icon: 'zap',
 		title: __( 'Instant hand-off', 'contact-sync' ),
-		text: __(
-			'Leads go straight to the sales team in Dynamics 365.',
-			'contact-sync'
-		),
+		text: __( 'Leads go straight to the sales team.', 'contact-sync' ),
 	},
 	{
 		icon: 'upload',
