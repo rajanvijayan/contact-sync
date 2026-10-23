@@ -32,6 +32,9 @@ const STEPS = [
 	__( 'Import', 'contact-sync' ),
 ];
 const PREVIEW_LIMIT = 200;
+const POLL_MS = 3000;
+// Stop polling delivery progress after five minutes; sync carries on in the background.
+const POLL_LIMIT = 100;
 
 function Dropzone( { onFile, error } ) {
 	const input = useRef();
@@ -154,16 +157,30 @@ function RecentImports() {
 					{
 						key: 'status',
 						label: __( 'Status', 'contact-sync' ),
-						render: ( b ) =>
-							b.complete ? (
-								<Badge tone="success" dot>
-									{ __( 'Complete', 'contact-sync' ) }
-								</Badge>
-							) : (
+						render: ( b ) => {
+							if ( b.complete ) {
+								return (
+									<Badge tone="success" dot>
+										{ __( 'Complete', 'contact-sync' ) }
+									</Badge>
+								);
+							}
+							if ( b.held ) {
+								return (
+									<Badge tone="warning" dot>
+										{ __(
+											'Awaiting connection',
+											'contact-sync'
+										) }
+									</Badge>
+								);
+							}
+							return (
 								<Badge tone="info" dot className="is-pulsing">
 									{ __( 'Processing', 'contact-sync' ) }
 								</Badge>
-							),
+							);
+						},
 					},
 				] }
 			/>
@@ -173,13 +190,18 @@ function RecentImports() {
 
 function ImportProgress( { result, onReset } ) {
 	const [ batch, setBatch ] = useState( result.batch );
+	const [ polls, setPolls ] = useState( 0 );
+	const timedOut = polls >= POLL_LIMIT;
+	const delivering = ! batch.complete && ! batch.held && ! timedOut;
 	useInterval(
-		() =>
+		() => {
+			setPolls( ( n ) => n + 1 );
 			get( `/portal/imports/${ batch.id }` )
 				.then( setBatch )
-				.catch( () => {} ),
-		3000,
-		! batch.complete
+				.catch( () => {} );
+		},
+		POLL_MS,
+		delivering
 	);
 	const c = batch.counts;
 	const done = c.synced + c.failed + c.duplicate;
@@ -187,28 +209,16 @@ function ImportProgress( { result, onReset } ) {
 	return (
 		<Card>
 			<div className="cs-import-done">
-				<span
-					className={ cx(
-						'cs-submitted__icon',
-						! batch.complete && 'is-working'
-					) }
-				>
-					<Icon
-						name={ batch.complete ? 'check' : 'refresh' }
-						size={ 28 }
-					/>
+				<span className="cs-submitted__icon">
+					<Icon name="check" size={ 28 } />
 				</span>
-				<h2>
-					{ batch.complete
-						? __( 'Import complete', 'contact-sync' )
-						: __( 'Importing your leads…', 'contact-sync' ) }
-				</h2>
+				<h2>{ __( 'Import complete', 'contact-sync' ) }</h2>
 				<p className="cs-muted">
 					{ sprintf(
 						/* translators: %d: number of leads */
 						_n(
-							'%d lead was added and is being delivered to Dynamics 365.',
-							'%d leads were added and are being delivered to Dynamics 365.',
+							'%d lead was added to your submissions.',
+							'%d leads were added to your submissions.',
 							result.imported,
 							'contact-sync'
 						),
@@ -230,6 +240,22 @@ function ImportProgress( { result, onReset } ) {
 						) }
 					</span>
 				</div>
+				{ batch.held && (
+					<Alert tone="info">
+						{ __(
+							'Your leads are saved. They will be delivered to Dynamics 365 automatically once your administrator connects or resumes the CRM sync.',
+							'contact-sync'
+						) }
+					</Alert>
+				) }
+				{ timedOut && ! batch.complete && ! batch.held && (
+					<Alert tone="info">
+						{ __(
+							'Delivery is continuing in the background. You can track each lead on the Submissions page.',
+							'contact-sync'
+						) }
+					</Alert>
+				) }
 				<div className="cs-import-stats">
 					<div>
 						<strong>{ c.synced }</strong>
