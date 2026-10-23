@@ -54,6 +54,7 @@ class Menu {
 			'agencies'    => __( 'Agencies', 'contact-sync' ),
 			'reps'        => __( 'Reps', 'contact-sync' ),
 			'forms'       => __( 'Forms', 'contact-sync' ),
+			'activity'    => __( 'Activity log', 'contact-sync' ),
 			'settings'    => __( 'Settings', 'contact-sync' ),
 		);
 

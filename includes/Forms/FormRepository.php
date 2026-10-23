@@ -27,7 +27,7 @@ class FormRepository {
 		$forms = Db::table( 'forms' );
 		$subs  = Db::table( 'submissions' );
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$rows = $wpdb->get_results( "SELECT f.*, (SELECT COUNT(*) FROM {$subs} s WHERE s.form_id = f.id) AS submissions FROM {$forms} f ORDER BY f.is_default DESC, f.title ASC", ARRAY_A );
+		$rows = $wpdb->get_results( "SELECT f.*, (SELECT COUNT(*) FROM {$subs} s WHERE s.form_id = f.id AND s.deleted_at IS NULL) AS submissions FROM {$forms} f ORDER BY f.is_default DESC, f.title ASC", ARRAY_A );
 		return array_map(
 			function ( $row ) {
 				$item                = $this->format( $row );

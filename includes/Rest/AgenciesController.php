@@ -96,7 +96,12 @@ class AgenciesController extends Controller {
 	 * @return mixed
 	 */
 	public function create( WP_REST_Request $request ) {
-		return $this->respond( ( new AgencyRepository() )->create( (array) $request->get_json_params() ), 201 );
+		$agency = ( new AgencyRepository() )->create( (array) $request->get_json_params() );
+		if ( ! is_wp_error( $agency ) ) {
+			/* translators: %s: agency name */
+			$this->audit( $agency, 'agency_created', 'agency', $agency['id'], sprintf( __( 'Created agency %s.', 'contact-sync' ), $agency['name'] ) );
+		}
+		return $this->respond( $agency, 201 );
 	}
 
 	/**
@@ -106,7 +111,12 @@ class AgenciesController extends Controller {
 	 * @return mixed
 	 */
 	public function update( WP_REST_Request $request ) {
-		return $this->respond( ( new AgencyRepository() )->update( (int) $request['id'], (array) $request->get_json_params() ) );
+		$agency = ( new AgencyRepository() )->update( (int) $request['id'], (array) $request->get_json_params() );
+		if ( ! is_wp_error( $agency ) ) {
+			/* translators: %s: agency name */
+			$this->audit( $agency, 'agency_updated', 'agency', $agency['id'], sprintf( __( 'Updated agency %s.', 'contact-sync' ), $agency['name'] ), array( 'fields' => array_keys( (array) $request->get_json_params() ) ) );
+		}
+		return $this->respond( $agency );
 	}
 
 	/**
@@ -116,7 +126,13 @@ class AgenciesController extends Controller {
 	 * @return mixed
 	 */
 	public function destroy( WP_REST_Request $request ) {
-		$deleted = ( new AgencyRepository() )->delete( (int) $request['id'] );
+		$repo    = new AgencyRepository();
+		$agency  = $repo->find( (int) $request['id'] );
+		$deleted = $repo->delete( (int) $request['id'] );
+		if ( $deleted && $agency ) {
+			/* translators: %s: agency name */
+			$this->audit( true, 'agency_deleted', 'agency', $agency['id'], sprintf( __( 'Deleted agency %s.', 'contact-sync' ), $agency['name'] ) );
+		}
 		return $deleted ? $this->respond( array( 'deleted' => true ) ) : new WP_Error( 'cs_not_found', __( 'Agency not found.', 'contact-sync' ), array( 'status' => 404 ) );
 	}
 }

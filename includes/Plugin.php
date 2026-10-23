@@ -13,6 +13,7 @@ use ContactSync\Crm\SyncJob;
 use ContactSync\Install\Schema;
 use ContactSync\Portal\Lockdown;
 use ContactSync\Portal\Router;
+use ContactSync\Support\Retention;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -52,6 +53,7 @@ final class Plugin {
 		Lockdown::register();
 		AuthService::register();
 		SyncJob::register();
+		Retention::register();
 
 		if ( is_admin() ) {
 			Menu::register();
@@ -73,6 +75,7 @@ final class Plugin {
 			new Rest\SubmissionsController(),
 			new Rest\ReportsController(),
 			new Rest\SettingsController(),
+			new Rest\ActivityController(),
 		);
 		foreach ( $controllers as $controller ) {
 			$controller->routes();

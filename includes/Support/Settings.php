@@ -41,6 +41,11 @@ class Settings {
 				'subject_template' => 'Lead from {agency} - {rep}',
 				'append_to_notes'  => true,
 			),
+			'data'     => array(
+				'soft_delete' => false,
+				'trash_days'  => 30,
+				'log_days'    => 90,
+			),
 			'branding' => array(
 				'product_name'  => 'Lead Portal',
 				'tagline'       => 'Submit and track your leads in one place.',
@@ -165,6 +170,19 @@ class Settings {
 			}
 			if ( isset( $s['subject_template'] ) ) {
 				$clean['sync']['subject_template'] = sanitize_text_field( $s['subject_template'] );
+			}
+		}
+
+		if ( isset( $input['data'] ) && is_array( $input['data'] ) ) {
+			$d = $input['data'];
+			if ( isset( $d['soft_delete'] ) ) {
+				$clean['data']['soft_delete'] = (bool) $d['soft_delete'];
+			}
+			// 0 keeps items forever.
+			foreach ( array( 'trash_days', 'log_days' ) as $key ) {
+				if ( isset( $d[ $key ] ) ) {
+					$clean['data'][ $key ] = min( 3650, max( 0, (int) $d[ $key ] ) );
+				}
 			}
 		}
 

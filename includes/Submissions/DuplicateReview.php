@@ -84,7 +84,7 @@ class DuplicateReview {
 		$count = 0;
 		foreach ( array_unique( array_map( 'intval', $ids ) ) as $id ) {
 			$row = $this->repo->row( $id );
-			if ( ! $row || 'review' !== $row['sync_status'] ) {
+			if ( ! $row || ! empty( $row['deleted_at'] ) || 'review' !== $row['sync_status'] ) {
 				continue;
 			}
 			$this->repo->update( $id, array_merge( $fields, array( 'reviewed_at' => Db::now() ) ) );

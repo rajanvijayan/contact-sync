@@ -111,7 +111,7 @@ class SyncJob {
 		foreach ( $ids as $id ) {
 			$row = $this->repo->row( $id );
 			// Held duplicates are released through DuplicateReview, not a retry.
-			if ( ! $row || in_array( $row['sync_status'], array( 'synced', 'review' ), true ) ) {
+			if ( ! $row || ! empty( $row['deleted_at'] ) || in_array( $row['sync_status'], array( 'synced', 'review' ), true ) ) {
 				continue;
 			}
 			$this->repo->update(
@@ -162,7 +162,8 @@ class SyncJob {
 	 */
 	public function run( $submission_id ) {
 		$row = $this->repo->row( $submission_id );
-		if ( ! $row || in_array( $row['sync_status'], array( 'synced', 'duplicate', 'review' ), true ) ) {
+		// Trashed leads stay unsent; restoring one and retrying sends it.
+		if ( ! $row || ! empty( $row['deleted_at'] ) || in_array( $row['sync_status'], array( 'synced', 'duplicate', 'review' ), true ) ) {
 			return;
 		}
 		if ( ! self::active() ) {

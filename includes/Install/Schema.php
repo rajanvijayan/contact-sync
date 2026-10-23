@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Schema {
 
-	const DB_VERSION = '1.0.2';
+	const DB_VERSION = '1.0.3';
 	const OPTION     = 'contact_sync_db_version';
 
 	/**
@@ -50,6 +50,7 @@ class Schema {
 		$submissions = Db::table( 'submissions' );
 		$batches     = Db::table( 'import_batches' );
 		$log         = Db::table( 'sync_log' );
+		$activity    = Db::table( 'activity_log' );
 
 		dbDelta(
 			"CREATE TABLE {$agencies} (
@@ -99,6 +100,8 @@ class Schema {
 				email varchar(190) DEFAULT NULL,
 				duplicate_of bigint(20) unsigned DEFAULT NULL,
 				reviewed_at datetime DEFAULT NULL,
+				deleted_at datetime DEFAULT NULL,
+				deleted_by bigint(20) unsigned DEFAULT NULL,
 				crm_lead_id varchar(64) DEFAULT NULL,
 				attempts smallint(5) unsigned NOT NULL DEFAULT 0,
 				last_error text NULL,
@@ -111,6 +114,7 @@ class Schema {
 				KEY batch_id (batch_id),
 				KEY sync_status (sync_status),
 				KEY email (email),
+				KEY deleted_at (deleted_at),
 				KEY created_at (created_at)
 			) {$charset};
 
@@ -136,7 +140,24 @@ class Schema {
 				response_body longtext NULL,
 				created_at datetime NOT NULL,
 				PRIMARY KEY  (id),
-				KEY submission_id (submission_id)
+				KEY submission_id (submission_id),
+				KEY created_at (created_at)
+			) {$charset};
+
+			CREATE TABLE {$activity} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				user_id bigint(20) unsigned DEFAULT NULL,
+				user_name varchar(190) NOT NULL DEFAULT '',
+				action varchar(40) NOT NULL,
+				object_type varchar(20) NOT NULL DEFAULT '',
+				object_id bigint(20) unsigned DEFAULT NULL,
+				message text NULL,
+				context longtext NULL,
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				KEY action (action),
+				KEY object (object_type, object_id),
+				KEY created_at (created_at)
 			) {$charset};"
 		);
 
@@ -148,7 +169,7 @@ class Schema {
 	 */
 	public static function drop() {
 		global $wpdb;
-		foreach ( array( 'agencies', 'agency_domains', 'forms', 'submissions', 'import_batches', 'sync_log' ) as $name ) {
+		foreach ( array( 'agencies', 'agency_domains', 'forms', 'submissions', 'import_batches', 'sync_log', 'activity_log' ) as $name ) {
 			$table = Db::table( $name );
 			$wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}

@@ -71,7 +71,7 @@ class SubmissionRepository {
 			return null;
 		}
 		$table = Db::table( 'submissions' );
-		$id    = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE email = %s ORDER BY id ASC LIMIT 1", $email ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$id    = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE email = %s AND deleted_at IS NULL ORDER BY id ASC LIMIT 1", $email ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		return $id ? (int) $id : null;
 	}
 
@@ -90,7 +90,7 @@ class SubmissionRepository {
 		$table = Db::table( 'submissions' );
 		$in    = implode( ', ', array_fill( 0, count( $emails ), '%s' ) );
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT email, MIN(id) AS id FROM {$table} WHERE email IN ({$in}) GROUP BY email", $emails ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT email, MIN(id) AS id FROM {$table} WHERE email IN ({$in}) AND deleted_at IS NULL GROUP BY email", $emails ), ARRAY_A );
 		return array_map( 'intval', wp_list_pluck( $rows, 'id', 'email' ) );
 	}
 
@@ -136,14 +136,16 @@ class SubmissionRepository {
 	/**
 	 * Formatted submission with related names.
 	 *
-	 * @param int $id Submission ID.
+	 * @param int  $id            Submission ID.
+	 * @param bool $with_trashed  Also find a submission in the trash.
 	 * @return array|null
 	 */
-	public function find( $id ) {
+	public function find( $id, $with_trashed = false ) {
 		$result = $this->query(
 			array(
 				'id'       => (int) $id,
 				'per_page' => 1,
+				'trashed'  => $with_trashed ? 'any' : '',
 			)
 		);
 		return $result['items'][0] ?? null;
@@ -162,7 +164,7 @@ class SubmissionRepository {
 	}
 
 	/**
-	 * Delete a submission and its log.
+	 * Permanently delete a submission and its log.
 	 *
 	 * @param int $id Submission ID.
 	 * @return bool
@@ -171,6 +173,61 @@ class SubmissionRepository {
 		global $wpdb;
 		$wpdb->delete( Db::table( 'sync_log' ), array( 'submission_id' => (int) $id ) );
 		return (bool) $wpdb->delete( Db::table( 'submissions' ), array( 'id' => (int) $id ) );
+	}
+
+	/**
+	 * Move a submission to the trash. Hidden everywhere, kept until restored or emptied.
+	 *
+	 * @param int $id      Submission ID.
+	 * @param int $user_id Who trashed it.
+	 * @return bool False when missing or already trashed.
+	 */
+	public function trash( $id, $user_id ) {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (bool) $wpdb->query( $wpdb->prepare( "UPDATE {$table} SET deleted_at = %s, deleted_by = %d WHERE id = %d AND deleted_at IS NULL", Db::now(), (int) $user_id, (int) $id ) );
+	}
+
+	/**
+	 * Take a submission out of the trash.
+	 *
+	 * @param int $id Submission ID.
+	 * @return bool False when missing or not trashed.
+	 */
+	public function restore( $id ) {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (bool) $wpdb->query( $wpdb->prepare( "UPDATE {$table} SET deleted_at = NULL, deleted_by = NULL WHERE id = %d AND deleted_at IS NOT NULL", (int) $id ) );
+	}
+
+	/**
+	 * Permanently delete submissions trashed more than $days ago (0 = all of the trash).
+	 *
+	 * @param int $days Days to keep in the trash.
+	 * @return int Submissions removed.
+	 */
+	public function purge_trash( $days = 0 ) {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		$ids   = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$table} WHERE deleted_at IS NOT NULL AND deleted_at < %s", gmdate( 'Y-m-d H:i:s', time() - (int) $days * DAY_IN_SECONDS ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ( $ids as $id ) {
+			$this->delete( $id );
+		}
+		return count( $ids );
+	}
+
+	/**
+	 * Delete sync log entries older than $days.
+	 *
+	 * @param int $days Days to keep.
+	 * @return int Rows removed.
+	 */
+	public function purge_logs( $days ) {
+		global $wpdb;
+		$table = Db::table( 'sync_log' );
+		return (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE created_at < %s", gmdate( 'Y-m-d H:i:s', time() - (int) $days * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	/**
@@ -354,6 +411,14 @@ class SubmissionRepository {
 		$where  = array( '1=1' );
 		$params = array();
 
+		// Trashed submissions are hidden unless asked for: 'only' lists the trash, 'any' includes it.
+		$trashed = $args['trashed'] ?? '';
+		if ( 'only' === $trashed ) {
+			$where[] = 's.deleted_at IS NOT NULL';
+		} elseif ( 'any' !== $trashed ) {
+			$where[] = 's.deleted_at IS NULL';
+		}
+
 		if ( ! empty( $args['id'] ) ) {
 			$where[]  = 's.id = %d';
 			$params[] = (int) $args['id'];
@@ -409,6 +474,17 @@ class SubmissionRepository {
 	}
 
 	/**
+	 * Display name of a user, or a placeholder when deleted.
+	 *
+	 * @param int $id User ID.
+	 * @return string
+	 */
+	private static function user_name( $id ) {
+		$user = get_userdata( $id );
+		return $user ? $user->display_name : __( 'Deleted user', 'contact-sync' );
+	}
+
+	/**
 	 * Shape a row for API output.
 	 *
 	 * @param array $row Row.
@@ -443,6 +519,8 @@ class SubmissionRepository {
 			'status'       => $row['sync_status'],
 			'duplicate_of' => $row['duplicate_of'] ? (int) $row['duplicate_of'] : null,
 			'reviewed_at'  => Db::iso( $row['reviewed_at'] ),
+			'deleted_at'   => Db::iso( $row['deleted_at'] ),
+			'deleted_by'   => $row['deleted_by'] ? self::user_name( (int) $row['deleted_by'] ) : null,
 			'crm_lead_id'  => $row['crm_lead_id'],
 			'attempts'     => (int) $row['attempts'],
 			'last_error'   => $row['last_error'],

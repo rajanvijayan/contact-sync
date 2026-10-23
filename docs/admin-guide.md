@@ -164,7 +164,11 @@ With no field selected, the **Form settings** panel shows the full mapping and l
 - Click a row to see every answer, who submitted it, the Dynamics lead ID and the **sync history**. Each attempt shows the exact payload sent and the response under *Technical details*.
 - **Retry sync** re-queues a lead (also available for several selected rows).
 - **Export CSV** downloads the filtered list with all answers.
-- **Delete** removes the record from WordPress only; it does not delete anything in Dynamics.
+- **Delete** removes the record from WordPress only; it does not delete anything in Dynamics. With **soft delete** on (Settings › Data & logs), deleted leads go to **Trash** instead: they are hidden from reps, reports, duplicate checks and sync, and can be **restored** or **deleted permanently**. **Empty trash** deletes everything in it, and leads are removed automatically after the number of days you set.
+
+## Activity log
+
+The **Activity log** lists who did what and when: leads moved to the trash, restored or deleted permanently, emptying the trash, duplicate approvals and rejections, sync retries, rep invitations and changes (including disabling access), agency and form changes, settings changes (names only, never values) and the automatic clean-up. Filter by type, date or text, and click an entry to open the lead, form, agency list or rep list it refers to.
 
 ## Settings
 
@@ -174,6 +178,7 @@ With no field selected, the **Form settings** panel shows the full mapping and l
 | Sync | Pause or resume sync, duplicate handling, number of retries, Topic template, agency/rep columns on the Lead, adding details to the description, **Sync queued leads now** |
 | Branding | Product name, tagline, logo, brand colour and support email used across the portal and emails |
 | Emails | Sender name and address, subject and text of the verification, invitation and password-reset emails, **Send test email** |
+| Data & logs | **Soft delete** (move deleted leads to Trash), days before the trash is emptied, and how long the Activity log and per-lead sync history are kept (0 keeps them forever). Clean-up runs once a day |
 | Security | Sign-in lockout (attempts and minutes), subdomain matching, bulk upload limits (rows and file size) |
 
 Always-on protections: email verification for sign-ups, rate-limited sign-up, sign-in and password reset, an encrypted CRM secret, the public-site lockdown and disabled XML-RPC.
