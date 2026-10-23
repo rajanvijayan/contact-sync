@@ -14,6 +14,8 @@ npm run lint:js && npm run lint:css
 npm run zip               # dist/contact-sync.zip, ready to upload
 ```
 
+Every push to `main` also runs `.github/workflows/build-plugin.yml`, which builds the zip, attaches it to the workflow run as an artifact, and publishes it on the rolling **latest** pre-release (`https://github.com/rajanvijayan/contact-sync/releases/download/latest/contact-sync.zip`). It can also be triggered manually from the Actions tab.
+
 ## Layout
 
 ```

@@ -1,0 +1,62 @@
+name: Build plugin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-plugin
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install JS dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build plugin zip
+        run: npm run zip
+
+      - name: Read plugin version
+        id: meta
+        run: |
+          version=$(grep -m1 -E '^\s*\*\s*Version:' contact-sync.php | awk '{print $NF}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contact-sync-${{ steps.meta.outputs.version }}-${{ steps.meta.outputs.sha }}
+          path: dist/contact-sync.zip
+          retention-days: 30
+
+      # Rolling "latest" pre-release so the newest main build has a stable download URL.
+      - name: Publish latest build release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest dist/contact-sync.zip \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Latest build (v${{ steps.meta.outputs.version }}, ${{ steps.meta.outputs.sha }})" \
+            --notes "Automated build of \`main\` at ${{ github.sha }}. Install via Plugins → Add New → Upload Plugin."
