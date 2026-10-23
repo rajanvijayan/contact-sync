@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Schema {
 
-	const DB_VERSION = '1.0.3';
+	const DB_VERSION = '1.0.4';
 	const OPTION     = 'contact_sync_db_version';
 
 	/**
@@ -26,6 +26,8 @@ class Schema {
 		$from = get_option( self::OPTION );
 		if ( self::DB_VERSION !== $from ) {
 			self::install();
+			// Roles are rebuilt on every upgrade so new capabilities reach existing sites.
+			\ContactSync\Roles::install();
 			if ( $from && version_compare( $from, '1.0.1', '<' ) ) {
 				( new \ContactSync\Crm\SyncJob() )->release_waiting();
 			}

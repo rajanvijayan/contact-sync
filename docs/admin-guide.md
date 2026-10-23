@@ -63,7 +63,7 @@ There are two ways reps get an account:
 3. Choose **Independent**, or **Agency rep** and pick the agency.
 4. Choose a role:
    - **Rep:** submits and tracks their own leads.
-   - **Agency manager:** can also see every lead submitted by their agency (the **Agency leads** page in the portal).
+   - **Agency manager:** can also see every lead submitted by their agency (the **Agency leads** page in the portal) and disable or re-enable portal access for the reps in their agency (the **Team** page). The Reps list shows when a rep was disabled by their agency manager; if you change that rep's status yourself, the manager can no longer undo it. Every change is recorded in the Activity log.
 5. Click **Send invitation**. The rep receives an email with a link to set their password. The link is valid for 24 hours; use **Resend invitation** if it expires.
 
 ### Row actions (⋮ menu)

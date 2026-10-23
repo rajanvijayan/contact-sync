@@ -95,6 +95,8 @@ class RepService {
 			) : null,
 			'is_admin'        => user_can( $user, Roles::CAP_MANAGE ),
 			'can_view_agency' => user_can( $user, Roles::CAP_VIEW_AGENCY ) && null !== $agency,
+			'can_manage_team' => user_can( $user, Roles::CAP_MANAGE_TEAM ) && null !== $agency,
+			'disabled_by'     => self::STATUS_DISABLED === self::status( $user->ID ) && get_user_meta( $user->ID, 'cs_disabled_by_manager', true ) ? 'manager' : null,
 			'registered'      => Db::iso( get_gmt_from_date( $user->user_registered ) ),
 			'source'          => get_user_meta( $user->ID, 'cs_source', true ) ? get_user_meta( $user->ID, 'cs_source', true ) : 'admin',
 		);
@@ -430,12 +432,76 @@ class RepService {
 
 		if ( isset( $data['status'] ) && in_array( $data['status'], array( self::STATUS_ACTIVE, self::STATUS_DISABLED, self::STATUS_PENDING ), true ) ) {
 			update_user_meta( $user->ID, 'cs_status', $data['status'] );
+			// An admin's decision replaces any agency manager's, so the manager can no longer undo it.
+			delete_user_meta( $user->ID, 'cs_disabled_by_manager' );
 			if ( self::STATUS_DISABLED === $data['status'] ) {
 				\WP_Session_Tokens::get_instance( $user->ID )->destroy_all();
 			}
 		}
 
 		return $this->profile( $user->ID );
+	}
+
+	/**
+	 * Whether an agency manager may give a rep this status.
+	 *
+	 * @param array  $target      Rep profile.
+	 * @param int    $manager_id  Manager user ID.
+	 * @param int    $agency_id   Manager's agency.
+	 * @param string $status      active|disabled.
+	 * @return true|WP_Error
+	 */
+	public static function manager_can_set_status( array $target, $manager_id, $agency_id, $status ) {
+		if ( empty( $target['agency'] ) || (int) $target['agency']['id'] !== (int) $agency_id || $target['is_admin'] ) {
+			return new WP_Error( 'cs_not_found', __( 'Rep not found.', 'contact-sync' ), array( 'status' => 404 ) );
+		}
+		if ( (int) $target['id'] === (int) $manager_id ) {
+			return new WP_Error( 'cs_forbidden', __( 'You cannot change your own access.', 'contact-sync' ), array( 'status' => 403 ) );
+		}
+		if ( Roles::REP !== $target['role'] ) {
+			return new WP_Error( 'cs_forbidden', __( 'Only an administrator can change another agency manager.', 'contact-sync' ), array( 'status' => 403 ) );
+		}
+		if ( ! in_array( $status, array( self::STATUS_ACTIVE, self::STATUS_DISABLED ), true ) ) {
+			return new WP_Error( 'cs_invalid', __( 'Choose whether to enable or disable access.', 'contact-sync' ), array( 'status' => 400 ) );
+		}
+		if ( self::STATUS_PENDING === $target['status'] ) {
+			return new WP_Error( 'cs_forbidden', __( 'This rep has not verified their email yet.', 'contact-sync' ), array( 'status' => 403 ) );
+		}
+		if ( self::STATUS_ACTIVE === $status && self::STATUS_DISABLED === $target['status'] && 'manager' !== $target['disabled_by'] ) {
+			return new WP_Error( 'cs_forbidden', __( 'An administrator disabled this rep. Ask them to restore access.', 'contact-sync' ), array( 'status' => 403 ) );
+		}
+		return true;
+	}
+
+	/**
+	 * Enable or disable a rep on behalf of their agency manager.
+	 *
+	 * @param WP_User $manager Agency manager.
+	 * @param int     $rep_id  Rep user ID.
+	 * @param string  $status  active|disabled.
+	 * @return array|WP_Error Updated profile.
+	 */
+	public function set_status_by_manager( WP_User $manager, $rep_id, $status ) {
+		$target = $this->profile( (int) $rep_id );
+		if ( ! $target || ! Roles::is_portal_user( (int) $rep_id ) ) {
+			return new WP_Error( 'cs_not_found', __( 'Rep not found.', 'contact-sync' ), array( 'status' => 404 ) );
+		}
+		$allowed = self::manager_can_set_status( $target, $manager->ID, self::agency_id( $manager->ID ), $status );
+		if ( is_wp_error( $allowed ) ) {
+			return $allowed;
+		}
+		if ( $target['status'] === $status ) {
+			return $target;
+		}
+
+		update_user_meta( $target['id'], 'cs_status', $status );
+		if ( self::STATUS_DISABLED === $status ) {
+			update_user_meta( $target['id'], 'cs_disabled_by_manager', $manager->ID );
+			\WP_Session_Tokens::get_instance( $target['id'] )->destroy_all();
+		} else {
+			delete_user_meta( $target['id'], 'cs_disabled_by_manager' );
+		}
+		return $this->profile( $target['id'] );
 	}
 
 	/**

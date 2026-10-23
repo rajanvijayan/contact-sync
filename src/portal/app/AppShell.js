@@ -13,6 +13,7 @@ import NewLead from './NewLead';
 import BulkUpload from './BulkUpload';
 import Submissions from './Submissions';
 import Templates from './Templates';
+import Team from './Team';
 
 export default function AppShell() {
 	const path = usePath();
@@ -42,6 +43,7 @@ export default function AppShell() {
 		'app/bulk': __( 'Bulk upload', 'contact-sync' ),
 		'app/submissions': __( 'My submissions', 'contact-sync' ),
 		'app/agency': __( 'Agency leads', 'contact-sync' ),
+		'app/team': __( 'Team', 'contact-sync' ),
 		'app/template': __( 'CSV template', 'contact-sync' ),
 	};
 	useEffect( () => {
@@ -78,6 +80,11 @@ export default function AppShell() {
 			icon: 'building',
 			label: __( 'Agency leads', 'contact-sync' ),
 		},
+		user?.can_manage_team && {
+			to: 'app/team',
+			icon: 'users',
+			label: __( 'Team', 'contact-sync' ),
+		},
 		{
 			to: 'app/template',
 			icon: 'file',
@@ -107,6 +114,9 @@ export default function AppShell() {
 			break;
 		case 'app/agency':
 			page = <Submissions scope="agency" />;
+			break;
+		case 'app/team':
+			page = user?.can_manage_team ? <Team /> : <Dashboard />;
 			break;
 		case 'app/template':
 			page = <Templates />;

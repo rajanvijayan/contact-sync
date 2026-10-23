@@ -103,7 +103,7 @@ Click **Import N leads**. A progress screen shows them being delivered.
 | Duplicate | This contact was already an open lead, so no copy was created |
 | Failed | It could not be delivered automatically; the admin team has been alerted |
 
-**Agency managers** also get an **Agency leads** page listing every lead from their agency.
+**Agency managers** also get an **Agency leads** page listing every lead from their agency, and a **Team** page listing the people in their agency. From **Team** a manager can **Disable** a rep's access (they are signed out at once and can no longer sign in or submit leads; their earlier leads are kept) and **Enable** it again. Managers cannot change their own access or other managers, cannot enable reps who have not verified their email, and cannot re-enable someone an administrator disabled.
 
 ## On your phone
 

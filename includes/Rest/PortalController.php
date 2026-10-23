@@ -12,6 +12,7 @@ use ContactSync\Import\BatchRepository;
 use ContactSync\Import\CsvImporter;
 use ContactSync\Import\SampleCsv;
 use ContactSync\Reps\RepService;
+use ContactSync\Roles;
 use ContactSync\Submissions\SubmissionRepository;
 use ContactSync\Submissions\SubmissionService;
 use ContactSync\Support\Settings;
@@ -62,6 +63,23 @@ class PortalController extends Controller {
 				'methods'             => WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_submission' ),
 				'permission_callback' => $perm,
+			)
+		);
+		$this->route(
+			'/portal/team',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'callback'            => array( $this, 'list_team' ),
+				'permission_callback' => array( $this, 'can_manage_team' ),
+				'args'                => $this->pagination_args(),
+			)
+		);
+		$this->route(
+			'/portal/team/(?P<id>\d+)',
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( $this, 'update_team_member' ),
+				'permission_callback' => array( $this, 'can_manage_team' ),
 			)
 		);
 		$this->route(
@@ -304,5 +322,69 @@ class PortalController extends Controller {
 		}
 		$agency_id = RepService::agency_id( $user_id );
 		return $agency_id && $item['agency'] && $item['agency']['id'] === $agency_id && current_user_can( 'cs_view_agency_leads' );
+	}
+
+	/**
+	 * Agency managers with an agency may manage their reps' access.
+	 *
+	 * @return true|WP_Error
+	 */
+	public function can_manage_team() {
+		$allowed = $this->can_submit();
+		if ( is_wp_error( $allowed ) ) {
+			return $allowed;
+		}
+		if ( ! current_user_can( Roles::CAP_MANAGE_TEAM ) || ! RepService::agency_id( get_current_user_id() ) ) {
+			return new WP_Error( 'rest_forbidden', __( 'You cannot manage reps.', 'contact-sync' ), array( 'status' => 403 ) );
+		}
+		return true;
+	}
+
+	/**
+	 * GET /portal/team — people in the manager's agency.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return mixed
+	 */
+	public function list_team( WP_REST_Request $request ) {
+		$result = ( new RepService() )->query(
+			array(
+				'agency'   => RepService::agency_id( get_current_user_id() ),
+				'search'   => (string) $request['search'],
+				'status'   => (string) $request['status'],
+				'page'     => $request['page'],
+				'per_page' => $request['per_page'],
+			)
+		);
+		return $this->paginated( $result, (int) $request['per_page'] );
+	}
+
+	/**
+	 * PUT /portal/team/{id} — { status: active|disabled }.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return mixed
+	 */
+	public function update_team_member( WP_REST_Request $request ) {
+		$manager = wp_get_current_user();
+		$status  = (string) $request['status'];
+		$rep     = ( new RepService() )->set_status_by_manager( $manager, (int) $request['id'], $status );
+		if ( ! is_wp_error( $rep ) ) {
+			$disabled = RepService::STATUS_DISABLED === $status;
+			$this->audit(
+				$rep,
+				$disabled ? 'rep_disabled' : 'rep_enabled',
+				'rep',
+				$rep['id'],
+				sprintf(
+					/* translators: 1: rep name, 2: rep email */
+					$disabled ? __( 'Agency manager disabled portal access for %1$s (%2$s).', 'contact-sync' ) : __( 'Agency manager enabled portal access for %1$s (%2$s).', 'contact-sync' ),
+					$rep['name'],
+					$rep['email']
+				),
+				array( 'by' => 'agency_manager' )
+			);
+		}
+		return $this->respond( $rep );
 	}
 }

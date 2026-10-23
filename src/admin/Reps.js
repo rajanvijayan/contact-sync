@@ -396,9 +396,19 @@ export default function Reps() {
 									REP_STATUS[ rep.status ] ||
 									REP_STATUS.active;
 								return (
-									<Badge tone={ meta.tone } dot>
-										{ meta.label }
-									</Badge>
+									<div className="cs-cell-primary__text">
+										<Badge tone={ meta.tone } dot>
+											{ meta.label }
+										</Badge>
+										{ rep.disabled_by === 'manager' && (
+											<span>
+												{ __(
+													'by their agency manager',
+													'contact-sync'
+												) }
+											</span>
+										) }
+									</div>
 								);
 							},
 						},
