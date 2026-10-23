@@ -19,6 +19,54 @@ defined( 'ABSPATH' ) || exit;
 class AgencyRepository {
 
 	/**
+	 * Agency status by ID for the current request.
+	 *
+	 * @var array<int,string|null>
+	 */
+	private static $status_cache = array();
+
+	/**
+	 * Status of an agency (active|inactive), or null when it does not exist. Cached per request.
+	 *
+	 * @param int $id Agency ID.
+	 * @return string|null
+	 */
+	public static function status( $id ) {
+		global $wpdb;
+		$id = (int) $id;
+		if ( ! array_key_exists( $id, self::$status_cache ) ) {
+			$table                     = Db::table( 'agencies' );
+			$status                    = $wpdb->get_var( $wpdb->prepare( "SELECT status FROM {$table} WHERE id = %d", $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			self::$status_cache[ $id ] = null === $status ? null : (string) $status;
+		}
+		return self::$status_cache[ $id ];
+	}
+
+	/**
+	 * Enable or disable an agency without touching its other details.
+	 *
+	 * @param int  $id     Agency ID.
+	 * @param bool $active Active.
+	 * @return array|WP_Error Updated agency.
+	 */
+	public function set_active( $id, $active ) {
+		global $wpdb;
+		if ( ! $this->find( $id ) ) {
+			return new WP_Error( 'cs_not_found', __( 'Agency not found.', 'contact-sync' ), array( 'status' => 404 ) );
+		}
+		$wpdb->update(
+			Db::table( 'agencies' ),
+			array(
+				'status'     => $active ? 'active' : 'inactive',
+				'updated_at' => Db::now(),
+			),
+			array( 'id' => (int) $id )
+		);
+		return $this->find( $id );
+	}
+
+
+	/**
 	 * List agencies with domains and rep counts.
 	 *
 	 * @param array $args Optional "search" and "status".
@@ -62,6 +110,7 @@ class AgencyRepository {
 	 */
 	public function find( $id ) {
 		global $wpdb;
+		unset( self::$status_cache[ (int) $id ] );
 		$table = Db::table( 'agencies' );
 		$row   = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		if ( ! $row ) {

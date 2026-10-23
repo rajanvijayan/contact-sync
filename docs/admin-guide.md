@@ -40,7 +40,7 @@ Rules:
 
 - A domain can belong to only one agency.
 - An agency with **no domains** is invite-only: reps can be assigned to it, but nobody can self-register.
-- An **inactive** agency stops accepting new sign-ups. Existing reps keep their access.
+- **Disable agency** (row menu, or the *Active* switch when editing) signs out every rep in the agency, including agency managers, and blocks them from signing in, using the portal and requesting password resets. New sign-ups from its domains are blocked. Leads are kept. **Enable agency** restores access; reps you disabled individually stay disabled. Both are recorded in the Activity log, and the Reps list marks members of a disabled agency.
 - **Deleting** an agency makes its reps independent. Their submitted leads are kept.
 - By default `sales.northwind.com` does **not** match `northwind.com`. Turn on **Settings › Security › Allow subdomains** to allow it.
 

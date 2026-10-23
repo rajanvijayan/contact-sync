@@ -408,6 +408,14 @@ export default function Reps() {
 												) }
 											</span>
 										) }
+										{ rep.agency?.active === false && (
+											<span>
+												{ __(
+													'Agency disabled',
+													'contact-sync'
+												) }
+											</span>
+										) }
 									</div>
 								);
 							},

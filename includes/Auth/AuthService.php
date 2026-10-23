@@ -54,6 +54,9 @@ class AuthService {
 		if ( RepService::STATUS_DISABLED === $status ) {
 			return new WP_Error( 'cs_disabled', __( 'Your account has been disabled. Please contact your administrator.', 'contact-sync' ) );
 		}
+		if ( Roles::is_portal_user( $user ) && RepService::agency_disabled( $user->ID ) ) {
+			return new WP_Error( 'cs_agency_disabled', __( 'Access for your agency has been disabled. Please contact your administrator.', 'contact-sync' ) );
+		}
 		return $user;
 	}
 
@@ -147,7 +150,7 @@ class AuthService {
 		RateLimiter::hit( $bucket, HOUR_IN_SECONDS );
 
 		$user = get_user_by( 'email', sanitize_email( $email ) );
-		if ( ! $user || RepService::STATUS_DISABLED === RepService::status( $user->ID ) ) {
+		if ( ! $user || RepService::STATUS_DISABLED === RepService::status( $user->ID ) || ( Roles::is_portal_user( $user ) && RepService::agency_disabled( $user->ID ) ) ) {
 			return true;
 		}
 		$key = get_password_reset_key( $user );

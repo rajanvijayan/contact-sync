@@ -174,7 +174,7 @@ function AgencyModal( { agency, onClose, onSaved } ) {
 					}
 					label={ __( 'Active', 'contact-sync' ) }
 					description={ __(
-						'Inactive agencies cannot accept new sign-ups. Existing reps keep access.',
+						'When off, the agency is disabled: its reps (including agency managers) are signed out and cannot sign in or submit leads, and new sign-ups from its domains are blocked. Their leads are kept.',
 						'contact-sync'
 					) }
 				/>
@@ -192,6 +192,61 @@ export default function Agencies() {
 		status,
 	} );
 	const { toast, confirm } = useUI();
+
+	const toggleStatus = async ( agency ) => {
+		const disable = agency.status === 'active';
+		const ok = await confirm( {
+			title: disable
+				? sprintf(
+						/* translators: %s: agency name */ __(
+							'Disable %s?',
+							'contact-sync'
+						),
+						agency.name
+				  )
+				: sprintf(
+						/* translators: %s: agency name */ __(
+							'Enable %s?',
+							'contact-sync'
+						),
+						agency.name
+				  ),
+			message: disable
+				? sprintf(
+						/* translators: %d: rep count */ _n(
+							'Its %d rep will be signed out and blocked from signing in or submitting leads until you enable the agency again. New sign-ups from its domains are blocked. Leads are kept.',
+							'Its %d reps will be signed out and blocked from signing in or submitting leads until you enable the agency again. New sign-ups from its domains are blocked. Leads are kept.',
+							agency.rep_count,
+							'contact-sync'
+						),
+						agency.rep_count
+				  )
+				: __(
+						'Its reps can sign in and submit leads again. Reps you disabled individually stay disabled.',
+						'contact-sync'
+				  ),
+			confirmLabel: disable
+				? __( 'Disable agency', 'contact-sync' )
+				: __( 'Enable agency', 'contact-sync' ),
+			danger: disable,
+		} );
+		if ( ! ok ) {
+			return;
+		}
+		try {
+			await put( `/agencies/${ agency.id }/status`, {
+				active: ! disable,
+			} );
+			toast(
+				disable
+					? __( 'Agency disabled', 'contact-sync' )
+					: __( 'Agency enabled', 'contact-sync' )
+			);
+			reload( true );
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+	};
 
 	const remove = async ( agency ) => {
 		const ok = await confirm( {
@@ -259,7 +314,7 @@ export default function Agencies() {
 							},
 							{
 								value: 'inactive',
-								label: __( 'Inactive', 'contact-sync' ),
+								label: __( 'Disabled', 'contact-sync' ),
 							},
 						] }
 					/>
@@ -341,13 +396,13 @@ export default function Agencies() {
 									tone={
 										a.status === 'active'
 											? 'success'
-											: 'neutral'
+											: 'warning'
 									}
 									dot
 								>
 									{ a.status === 'active'
 										? __( 'Active', 'contact-sync' )
-										: __( 'Inactive', 'contact-sync' ) }
+										: __( 'Disabled', 'contact-sync' ) }
 								</Badge>
 							),
 						},
@@ -402,6 +457,25 @@ export default function Agencies() {
 													),
 											},
 											{ separator: true },
+											a.status === 'active'
+												? {
+														label: __(
+															'Disable agency',
+															'contact-sync'
+														),
+														icon: 'lock',
+														onClick: () =>
+															toggleStatus( a ),
+												  }
+												: {
+														label: __(
+															'Enable agency',
+															'contact-sync'
+														),
+														icon: 'checkCircle',
+														onClick: () =>
+															toggleStatus( a ),
+												  },
 											{
 												label: __(
 													'Delete',

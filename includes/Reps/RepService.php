@@ -67,6 +67,39 @@ class RepService {
 	}
 
 	/**
+	 * Whether the user belongs to an agency an administrator has disabled.
+	 *
+	 * @param int $user_id User ID.
+	 * @return bool
+	 */
+	public static function agency_disabled( $user_id ) {
+		$agency_id = self::agency_id( $user_id );
+		return $agency_id && 'inactive' === AgencyRepository::status( $agency_id );
+	}
+
+	/**
+	 * Sign out every member of an agency.
+	 *
+	 * @param int $agency_id Agency ID.
+	 * @return int Users signed out.
+	 */
+	public static function sign_out_agency( $agency_id ) {
+		$ids = get_users(
+			array(
+				'fields'     => 'ID',
+				'meta_key'   => 'cs_agency_id', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_query_meta_key
+				'meta_value' => (int) $agency_id, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_query_meta_value
+			)
+		);
+		foreach ( $ids as $id ) {
+			if ( Roles::is_portal_user( (int) $id ) ) {
+				\WP_Session_Tokens::get_instance( (int) $id )->destroy_all();
+			}
+		}
+		return count( $ids );
+	}
+
+	/**
 	 * Public profile used by the portal and admin.
 	 *
 	 * @param WP_User|int $user User.
@@ -90,8 +123,9 @@ class RepService {
 			'status'          => self::status( $user->ID ),
 			'role'            => $role ? $role[0] : ( user_can( $user, Roles::CAP_MANAGE ) ? 'administrator' : '' ),
 			'agency'          => $agency ? array(
-				'id'   => $agency['id'],
-				'name' => $agency['name'],
+				'id'     => $agency['id'],
+				'name'   => $agency['name'],
+				'active' => 'active' === $agency['status'],
 			) : null,
 			'is_admin'        => user_can( $user, Roles::CAP_MANAGE ),
 			'can_view_agency' => user_can( $user, Roles::CAP_VIEW_AGENCY ) && null !== $agency,
