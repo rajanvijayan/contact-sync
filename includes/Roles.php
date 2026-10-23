@@ -19,6 +19,7 @@ class Roles {
 
 	const CAP_SUBMIT      = 'cs_submit_leads';
 	const CAP_VIEW_AGENCY = 'cs_view_agency_leads';
+	const CAP_MANAGE_TEAM = 'cs_manage_agency_reps';
 	const CAP_MANAGE      = 'manage_contact_sync';
 
 	/**
@@ -44,6 +45,7 @@ class Roles {
 				'read'                => true,
 				self::CAP_SUBMIT      => true,
 				self::CAP_VIEW_AGENCY => true,
+				self::CAP_MANAGE_TEAM => true,
 			)
 		);
 
@@ -52,6 +54,7 @@ class Roles {
 			$admin->add_cap( self::CAP_MANAGE );
 			$admin->add_cap( self::CAP_SUBMIT );
 			$admin->add_cap( self::CAP_VIEW_AGENCY );
+			$admin->add_cap( self::CAP_MANAGE_TEAM );
 		}
 	}
 

@@ -12,6 +12,7 @@ use ContactSync\Crm\SyncJob;
 use ContactSync\Forms\FormSchema;
 use ContactSync\Forms\Validator;
 use ContactSync\Reps\RepService;
+use ContactSync\Support\Settings;
 use WP_Error;
 use WP_User;
 
@@ -19,6 +20,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Validates input, stores the submission and queues it for CRM sync.
+ *
+ * A lead whose email matches an earlier submission is held for admin review instead.
  */
 class SubmissionService {
 
@@ -62,6 +65,9 @@ class SubmissionService {
 			);
 		}
 
+		$summary      = self::summary( $form['schema'], $result['values'] );
+		$duplicate_of = self::hold_duplicates() ? $this->repo->find_by_email( $summary['email'] ) : null;
+
 		$id = $this->repo->insert(
 			array(
 				'form_id'      => $form['id'],
@@ -70,16 +76,31 @@ class SubmissionService {
 				'agency_id'    => RepService::agency_id( $user->ID ),
 				'batch_id'     => $options['batch_id'] ?? null,
 				'source'       => $options['source'] ?? 'form',
+				'email'        => $summary['email'],
+				'sync_status'  => $duplicate_of ? 'review' : 'queued',
+				'duplicate_of' => $duplicate_of,
 				'data'         => array(
 					'values'  => $result['values'],
 					'labels'  => self::labels( $form['schema'] ),
 					'display' => self::display( $form['schema'], $result['values'] ),
-					'summary' => self::summary( $form['schema'], $result['values'] ),
+					'summary' => $summary,
 				),
 			)
 		);
 
-		SyncJob::queue( $id );
+		if ( $duplicate_of ) {
+			$this->repo->log(
+				array(
+					'submission_id' => $id,
+					'attempt'       => 0,
+					'action'        => 'review',
+					/* translators: %d: submission ID */
+					'message'       => sprintf( __( 'Held for review: same email as lead #%d.', 'contact-sync' ), $duplicate_of ),
+				)
+			);
+		} else {
+			SyncJob::queue( $id );
+		}
 
 		/**
 		 * Fires after a lead submission is stored.
@@ -91,6 +112,15 @@ class SubmissionService {
 		do_action( 'contact_sync_submission_created', $id, $result['values'], $form );
 
 		return $id;
+	}
+
+	/**
+	 * Whether leads matching an earlier submission's email are held for review.
+	 *
+	 * @return bool
+	 */
+	public static function hold_duplicates() {
+		return (bool) Settings::get( 'sync.hold_duplicates', true );
 	}
 
 	/**

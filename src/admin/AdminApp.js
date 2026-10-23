@@ -12,6 +12,7 @@ import Builder from './builder/Builder';
 import Submissions from './Submissions';
 import Reports from './Reports';
 import Settings from './Settings';
+import Activity from './Activity';
 
 const NAV = [
 	{
@@ -36,6 +37,11 @@ const NAV = [
 	},
 	{ id: 'reps', icon: 'users', label: __( 'Reps', 'contact-sync' ) },
 	{ id: 'forms', icon: 'form', label: __( 'Forms', 'contact-sync' ) },
+	{
+		id: 'activity',
+		icon: 'list',
+		label: __( 'Activity', 'contact-sync' ),
+	},
 	{
 		id: 'settings',
 		icon: 'settings',
@@ -86,6 +92,9 @@ export default function AdminApp() {
 			break;
 		case 'settings':
 			page = <Settings />;
+			break;
+		case 'activity':
+			page = <Activity />;
 			break;
 		default:
 			page = <Dashboard />;

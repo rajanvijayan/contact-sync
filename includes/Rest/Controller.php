@@ -63,6 +63,24 @@ abstract class Controller {
 	}
 
 	/**
+	 * Record an activity log entry when an action succeeded, and pass the result through.
+	 *
+	 * @param mixed    $result      Result or WP_Error.
+	 * @param string   $action      Action name.
+	 * @param string   $object_type Object type.
+	 * @param int|null $object_id   Object ID.
+	 * @param string   $message     Summary.
+	 * @param array    $context     Extra details.
+	 * @return mixed
+	 */
+	protected function audit( $result, $action, $object_type, $object_id, $message, array $context = array() ) {
+		if ( ! is_wp_error( $result ) && false !== $result ) {
+			\ContactSync\Support\ActivityLog::record( $action, $object_type, $object_id, $message, $context );
+		}
+		return $result;
+	}
+
+	/**
 	 * Wrap a result, passing WP_Error through.
 	 *
 	 * @param mixed $data   Data or error.

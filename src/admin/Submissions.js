@@ -5,6 +5,7 @@ import Icon from '../shared/icons';
 import { formatDate, timeAgo } from '../shared/format';
 import { useFetch, useInterval } from '../shared/hooks';
 import {
+	Alert,
 	Badge,
 	Button,
 	Card,
@@ -110,7 +111,7 @@ function SyncLog( { logs } ) {
 	);
 }
 
-function DetailDrawer( { id, onClose, onChanged } ) {
+function DetailDrawer( { id, onClose, onChanged, onOpen, softDelete } ) {
 	const [ item, setItem ] = useState( null );
 	const [ busy, setBusy ] = useState( false );
 	const { toast, confirm } = useUI();
@@ -145,24 +146,66 @@ function DetailDrawer( { id, onClose, onChanged } ) {
 		setBusy( false );
 	};
 
+	const decide = async ( decision ) => {
+		setBusy( true );
+		try {
+			await post( '/submissions/review', { ids: [ id ], decision } );
+			toast(
+				decision === 'approve'
+					? __( 'Lead approved and queued', 'contact-sync' )
+					: __( 'Lead rejected as duplicate', 'contact-sync' )
+			);
+			await load();
+			onChanged();
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+		setBusy( false );
+	};
+
+	const trashed = !! item?.deleted_at;
+	const toTrash = softDelete && ! trashed;
+
 	const remove = async () => {
 		if (
+			! toTrash &&
 			! ( await confirm( {
-				title: __( 'Delete submission?', 'contact-sync' ),
+				title: __( 'Delete permanently?', 'contact-sync' ),
 				message: __(
-					'This removes it from this site only. Records already in Dynamics 365 are not affected.',
+					'This removes it from this site for good. Records already in Dynamics 365 are not affected.',
 					'contact-sync'
 				),
 				danger: true,
-				confirmLabel: __( 'Delete', 'contact-sync' ),
+				confirmLabel: __( 'Delete permanently', 'contact-sync' ),
 			} ) )
 		) {
 			return;
 		}
-		await del( `/submissions/${ id }` );
-		toast( __( 'Submission deleted', 'contact-sync' ) );
-		onChanged();
-		onClose();
+		try {
+			await del( `/submissions/${ id }` );
+			toast(
+				toTrash
+					? __( 'Moved to the trash', 'contact-sync' )
+					: __( 'Submission deleted', 'contact-sync' )
+			);
+			onChanged();
+			onClose();
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+	};
+
+	const restore = async () => {
+		setBusy( true );
+		try {
+			await post( '/submissions/restore', { ids: [ id ] } );
+			toast( __( 'Lead restored', 'contact-sync' ) );
+			await load();
+			onChanged();
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+		setBusy( false );
 	};
 
 	return (
@@ -191,19 +234,53 @@ function DetailDrawer( { id, onClose, onChanged } ) {
 							icon="trash"
 							onClick={ remove }
 						>
-							{ __( 'Delete', 'contact-sync' ) }
+							{ toTrash
+								? __( 'Move to trash', 'contact-sync' )
+								: __( 'Delete permanently', 'contact-sync' ) }
 						</Button>
 						<div className="cs-grow" />
-						{ item.status !== 'synced' && (
+						{ trashed && (
 							<Button
 								variant="primary"
-								icon="refresh"
+								icon="undo"
 								loading={ busy }
-								onClick={ retry }
+								onClick={ restore }
 							>
-								{ __( 'Retry sync', 'contact-sync' ) }
+								{ __( 'Restore', 'contact-sync' ) }
 							</Button>
 						) }
+						{ ! trashed && item.status === 'review' && (
+							<>
+								<Button
+									icon="x"
+									disabled={ busy }
+									onClick={ () => decide( 'reject' ) }
+								>
+									{ __( 'Reject', 'contact-sync' ) }
+								</Button>
+								<Button
+									variant="primary"
+									icon="check"
+									loading={ busy }
+									onClick={ () => decide( 'approve' ) }
+								>
+									{ __( 'Approve and send', 'contact-sync' ) }
+								</Button>
+							</>
+						) }
+						{ ! trashed &&
+							! [ 'synced', 'review' ].includes(
+								item.status
+							) && (
+								<Button
+									variant="primary"
+									icon="refresh"
+									loading={ busy }
+									onClick={ retry }
+								>
+									{ __( 'Retry sync', 'contact-sync' ) }
+								</Button>
+							) }
 					</>
 				)
 			}
@@ -214,6 +291,59 @@ function DetailDrawer( { id, onClose, onChanged } ) {
 				</div>
 			) : (
 				<>
+					{ trashed && (
+						<div className="cs-mb">
+							<Alert
+								tone="info"
+								title={ __( 'In the trash', 'contact-sync' ) }
+							>
+								{ sprintf(
+									/* translators: 1: date, 2: admin name */
+									__(
+										'Moved to the trash %1$s by %2$s. It is hidden from reps, reports and sync until restored.',
+										'contact-sync'
+									),
+									formatDate( item.deleted_at ),
+									item.deleted_by ||
+										__( 'an administrator', 'contact-sync' )
+								) }
+							</Alert>
+						</div>
+					) }
+					{ ! trashed &&
+						item.status === 'review' &&
+						item.duplicate_of && (
+							<div className="cs-mb">
+								<Alert
+									tone="warning"
+									title={ __(
+										'Possible duplicate',
+										'contact-sync'
+									) }
+									action={
+										<Button
+											size="sm"
+											onClick={ () =>
+												onOpen( item.duplicate_of )
+											}
+										>
+											{ sprintf(
+												/* translators: %d: submission ID */ __(
+													'Open #%d',
+													'contact-sync'
+												),
+												item.duplicate_of
+											) }
+										</Button>
+									}
+								>
+									{ __(
+										'A lead with the same email was submitted earlier. Approve to send this one to Dynamics 365 anyway, or reject it to keep it out.',
+										'contact-sync'
+									) }
+								</Alert>
+							</div>
+						) }
 					<SubmissionDetails item={ item } admin />
 					<h3 className="cs-section-title">
 						{ __( 'Sync history', 'contact-sync' ) }
@@ -241,12 +371,17 @@ export default function Submissions() {
 		params.get( 'open' ) ? Number( params.get( 'open' ) ) : null
 	);
 	const [ exporting, setExporting ] = useState( false );
+	const [ trashView, setTrashView ] = useState(
+		params.get( 'trash' ) === '1'
+	);
 	const { data: agencies } = useFetch( '/agencies' );
 	const { data, loading, reload } = useFetch( '/submissions', {
 		...filters,
+		trashed: trashView ? 1 : '',
 		page,
 		per_page: PER_PAGE,
 	} );
+	const softDelete = !! data?.soft_delete;
 	const { toast, confirm } = useUI();
 	const set = ( key ) => ( value ) =>
 		setFilters( ( f ) => ( { ...f, [ key ]: value } ) );
@@ -254,7 +389,7 @@ export default function Submissions() {
 	useEffect( () => {
 		setPage( 1 );
 		setSelected( [] );
-	}, [ filters ] );
+	}, [ filters, trashView ] );
 
 	useInterval(
 		() => reload( true ),
@@ -285,39 +420,155 @@ export default function Submissions() {
 		}
 	};
 
+	const bulkReview = async ( decision ) => {
+		try {
+			const res = await post( '/submissions/review', {
+				ids: selected,
+				decision,
+			} );
+			const message =
+				decision === 'approve'
+					? sprintf(
+							/* translators: %d: count */ _n(
+								'%d lead approved and queued',
+								'%d leads approved and queued',
+								res.updated,
+								'contact-sync'
+							),
+							res.updated
+					  )
+					: sprintf(
+							/* translators: %d: count */ _n(
+								'%d lead rejected as duplicate',
+								'%d leads rejected as duplicates',
+								res.updated,
+								'contact-sync'
+							),
+							res.updated
+					  );
+			toast( message );
+			setSelected( [] );
+			reload( true );
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+	};
+
+	const toTrash = softDelete && ! trashView;
+
 	const bulkDelete = async () => {
 		const ok = await confirm( {
-			title: sprintf(
-				/* translators: %d: count */ _n(
-					'Delete %d submission?',
-					'Delete %d submissions?',
-					selected.length,
-					'contact-sync'
-				),
-				selected.length
-			),
-			message: __(
-				'Records already in Dynamics 365 are not affected.',
-				'contact-sync'
-			),
-			danger: true,
-			confirmLabel: __( 'Delete', 'contact-sync' ),
+			title: toTrash
+				? sprintf(
+						/* translators: %d: count */ _n(
+							'Move %d submission to the trash?',
+							'Move %d submissions to the trash?',
+							selected.length,
+							'contact-sync'
+						),
+						selected.length
+				  )
+				: sprintf(
+						/* translators: %d: count */ _n(
+							'Permanently delete %d submission?',
+							'Permanently delete %d submissions?',
+							selected.length,
+							'contact-sync'
+						),
+						selected.length
+				  ),
+			message: toTrash
+				? __( 'You can restore them from the trash.', 'contact-sync' )
+				: __(
+						'This cannot be undone. Records already in Dynamics 365 are not affected.',
+						'contact-sync'
+				  ),
+			danger: ! toTrash,
+			confirmLabel: toTrash
+				? __( 'Move to trash', 'contact-sync' )
+				: __( 'Delete permanently', 'contact-sync' ),
 		} );
 		if ( ! ok ) {
 			return;
 		}
-		await Promise.all(
-			selected.map( ( id ) => del( `/submissions/${ id }` ) )
-		);
-		toast( __( 'Submissions deleted', 'contact-sync' ) );
+		try {
+			await Promise.all(
+				selected.map( ( id ) => del( `/submissions/${ id }` ) )
+			);
+			toast(
+				toTrash
+					? __( 'Moved to the trash', 'contact-sync' )
+					: __( 'Submissions deleted', 'contact-sync' )
+			);
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
 		setSelected( [] );
+		reload( true );
+	};
+
+	const bulkRestore = async () => {
+		try {
+			const res = await post( '/submissions/restore', {
+				ids: selected,
+			} );
+			toast(
+				sprintf(
+					/* translators: %d: count */ _n(
+						'%d lead restored',
+						'%d leads restored',
+						res.restored,
+						'contact-sync'
+					),
+					res.restored
+				)
+			);
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+		setSelected( [] );
+		reload( true );
+	};
+
+	const emptyTrash = async () => {
+		const ok = await confirm( {
+			title: __( 'Empty the trash?', 'contact-sync' ),
+			message: __(
+				'Every lead in the trash is deleted permanently. This cannot be undone.',
+				'contact-sync'
+			),
+			danger: true,
+			confirmLabel: __( 'Empty trash', 'contact-sync' ),
+		} );
+		if ( ! ok ) {
+			return;
+		}
+		try {
+			const res = await post( '/submissions/empty-trash' );
+			toast(
+				sprintf(
+					/* translators: %d: count */ _n(
+						'%d lead deleted permanently',
+						'%d leads deleted permanently',
+						res.deleted,
+						'contact-sync'
+					),
+					res.deleted
+				)
+			);
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
 		reload( true );
 	};
 
 	const exportCsv = async () => {
 		setExporting( true );
 		try {
-			const file = await get( '/submissions/export', filters );
+			const file = await get( '/submissions/export', {
+				...filters,
+				trashed: trashView ? 1 : '',
+			} );
 			downloadFile( file.filename, file.content );
 			toast(
 				sprintf(
@@ -335,25 +586,95 @@ export default function Submissions() {
 	};
 
 	const hasFilters = Object.values( filters ).some( Boolean );
+	let emptyTitle = __( 'No submissions yet', 'contact-sync' );
+	if ( hasFilters ) {
+		emptyTitle = __( 'No matching submissions', 'contact-sync' );
+	} else if ( trashView ) {
+		emptyTitle = __( 'The trash is empty', 'contact-sync' );
+	}
 
 	return (
 		<>
 			<PageHeader
-				title={ __( 'Submissions', 'contact-sync' ) }
-				description={ __(
-					'Every lead submitted by reps, with its Dynamics 365 sync status.',
-					'contact-sync'
-				) }
+				title={
+					trashView
+						? __( 'Trash', 'contact-sync' )
+						: __( 'Submissions', 'contact-sync' )
+				}
+				description={
+					trashView
+						? __(
+								'Deleted leads. Restore them, or delete them permanently.',
+								'contact-sync'
+						  )
+						: __(
+								'Every lead submitted by reps, with its Dynamics 365 sync status.',
+								'contact-sync'
+						  )
+				}
 				actions={
-					<Button
-						icon="download"
-						onClick={ exportCsv }
-						loading={ exporting }
-					>
-						{ __( 'Export CSV', 'contact-sync' ) }
-					</Button>
+					<div className="cs-row">
+						{ trashView ? (
+							<>
+								<Button
+									icon="arrowLeft"
+									onClick={ () => setTrashView( false ) }
+								>
+									{ __(
+										'Back to submissions',
+										'contact-sync'
+									) }
+								</Button>
+								<Button
+									variant="danger-ghost"
+									icon="trash"
+									disabled={ ! data?.trashed }
+									onClick={ emptyTrash }
+								>
+									{ __( 'Empty trash', 'contact-sync' ) }
+								</Button>
+							</>
+						) : (
+							( softDelete || data?.trashed > 0 ) && (
+								<Button
+									icon="trash"
+									onClick={ () => setTrashView( true ) }
+								>
+									{ sprintf(
+										/* translators: %d: number of leads in the trash */ __(
+											'Trash (%d)',
+											'contact-sync'
+										),
+										data?.trashed || 0
+									) }
+								</Button>
+							)
+						) }
+						<Button
+							icon="download"
+							onClick={ exportCsv }
+							loading={ exporting }
+						>
+							{ __( 'Export CSV', 'contact-sync' ) }
+						</Button>
+					</div>
 				}
 			/>
+			{ trashView && data?.trash_days > 0 && (
+				<div className="cs-mb">
+					<Alert tone="info">
+						{ sprintf(
+							/* translators: %d: days */ _n(
+								'Leads are deleted permanently %d day after they are moved to the trash.',
+								'Leads are deleted permanently %d days after they are moved to the trash.',
+								data.trash_days,
+								'contact-sync'
+							),
+							data.trash_days
+						) }
+					</Alert>
+				</div>
+			) }
 			<Card padded={ false }>
 				<div className="cs-toolbar">
 					<SearchInput
@@ -381,6 +702,10 @@ export default function Submissions() {
 							{
 								value: 'failed',
 								label: __( 'Failed', 'contact-sync' ),
+							},
+							{
+								value: 'review',
+								label: __( 'In review', 'contact-sync' ),
 							},
 							{
 								value: 'duplicate',
@@ -480,16 +805,51 @@ export default function Submissions() {
 								selected.length
 							) }
 						</span>
-						<Button size="sm" icon="refresh" onClick={ bulkRetry }>
-							{ __( 'Retry sync', 'contact-sync' ) }
-						</Button>
+						{ trashView && (
+							<Button
+								size="sm"
+								icon="undo"
+								onClick={ bulkRestore }
+							>
+								{ __( 'Restore', 'contact-sync' ) }
+							</Button>
+						) }
+						{ ! trashView && filters.status === 'review' && (
+							<>
+								<Button
+									size="sm"
+									icon="check"
+									onClick={ () => bulkReview( 'approve' ) }
+								>
+									{ __( 'Approve and send', 'contact-sync' ) }
+								</Button>
+								<Button
+									size="sm"
+									icon="x"
+									onClick={ () => bulkReview( 'reject' ) }
+								>
+									{ __( 'Reject', 'contact-sync' ) }
+								</Button>
+							</>
+						) }
+						{ ! trashView && filters.status !== 'review' && (
+							<Button
+								size="sm"
+								icon="refresh"
+								onClick={ bulkRetry }
+							>
+								{ __( 'Retry sync', 'contact-sync' ) }
+							</Button>
+						) }
 						<Button
 							size="sm"
 							variant="danger-ghost"
 							icon="trash"
 							onClick={ bulkDelete }
 						>
-							{ __( 'Delete', 'contact-sync' ) }
+							{ toTrash
+								? __( 'Move to trash', 'contact-sync' )
+								: __( 'Delete permanently', 'contact-sync' ) }
 						</Button>
 						<Button
 							size="sm"
@@ -613,14 +973,7 @@ export default function Submissions() {
 					] }
 					empty={
 						<EmptyState
-							title={
-								hasFilters
-									? __(
-											'No matching submissions',
-											'contact-sync'
-									  )
-									: __( 'No submissions yet', 'contact-sync' )
-							}
+							title={ emptyTitle }
 							description={
 								hasFilters
 									? __(
@@ -647,6 +1000,8 @@ export default function Submissions() {
 				id={ openId }
 				onClose={ () => setOpenId( null ) }
 				onChanged={ () => reload( true ) }
+				onOpen={ setOpenId }
+				softDelete={ softDelete }
 			/>
 		</>
 	);

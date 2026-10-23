@@ -34,11 +34,17 @@ class Settings {
 				'enabled'          => true,
 				'max_attempts'     => 5,
 				'duplicate_check'  => 'off',
+				'hold_duplicates'  => true,
 				'agency_attribute' => '',
 				'rep_attribute'    => '',
 				'rep_email_attr'   => '',
 				'subject_template' => 'Lead from {agency} - {rep}',
 				'append_to_notes'  => true,
+			),
+			'data'     => array(
+				'soft_delete' => false,
+				'trash_days'  => 30,
+				'log_days'    => 90,
 			),
 			'branding' => array(
 				'product_name'  => 'Lead Portal',
@@ -145,6 +151,9 @@ class Settings {
 			if ( isset( $s['enabled'] ) ) {
 				$clean['sync']['enabled'] = (bool) $s['enabled'];
 			}
+			if ( isset( $s['hold_duplicates'] ) ) {
+				$clean['sync']['hold_duplicates'] = (bool) $s['hold_duplicates'];
+			}
 			if ( isset( $s['append_to_notes'] ) ) {
 				$clean['sync']['append_to_notes'] = (bool) $s['append_to_notes'];
 			}
@@ -161,6 +170,19 @@ class Settings {
 			}
 			if ( isset( $s['subject_template'] ) ) {
 				$clean['sync']['subject_template'] = sanitize_text_field( $s['subject_template'] );
+			}
+		}
+
+		if ( isset( $input['data'] ) && is_array( $input['data'] ) ) {
+			$d = $input['data'];
+			if ( isset( $d['soft_delete'] ) ) {
+				$clean['data']['soft_delete'] = (bool) $d['soft_delete'];
+			}
+			// 0 keeps items forever.
+			foreach ( array( 'trash_days', 'log_days' ) as $key ) {
+				if ( isset( $d[ $key ] ) ) {
+					$clean['data'][ $key ] = min( 3650, max( 0, (int) $d[ $key ] ) );
+				}
 			}
 		}
 

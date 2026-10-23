@@ -36,6 +36,7 @@ const TABS = [
 	},
 	{ id: 'emails', label: __( 'Emails', 'contact-sync' ), icon: 'mail' },
 	{ id: 'security', label: __( 'Security', 'contact-sync' ), icon: 'shield' },
+	{ id: 'data', label: __( 'Data & logs', 'contact-sync' ), icon: 'list' },
 ];
 
 function SetupGuide() {
@@ -194,7 +195,7 @@ export default function Settings() {
 			<PageHeader
 				title={ __( 'Settings', 'contact-sync' ) }
 				description={ __(
-					'Connection, sync behaviour, branding and security.',
+					'Connection, sync behaviour, branding, security, and data retention.',
 					'contact-sync'
 				) }
 			/>
@@ -432,13 +433,25 @@ export default function Settings() {
 									'contact-sync'
 								) }
 							/>
+							<Switch
+								checked={ settings.sync.hold_duplicates }
+								onChange={ set( 'sync', 'hold_duplicates' ) }
+								label={ __(
+									'Hold duplicates for review',
+									'contact-sync'
+								) }
+								description={ __(
+									'A lead with the same email as an earlier submission (including earlier rows in the same upload) waits on the Submissions page until you approve or reject it.',
+									'contact-sync'
+								) }
+							/>
 							<Field
 								label={ __(
 									'Duplicate handling',
 									'contact-sync'
 								) }
 								help={ __(
-									'Checks for an open lead with the same email before creating one.',
+									'Checks Dynamics 365 for an open lead with the same email before creating one. Leads you approve from review skip this check.',
 									'contact-sync'
 								) }
 							>
@@ -1019,6 +1032,87 @@ export default function Settings() {
 										set(
 											'security',
 											'max_csv_kb'
+										)( Number( e.target.value ) )
+									}
+								/>
+							</Field>
+						</div>
+					</Card>
+				</div>
+			) }
+
+			{ tab === 'data' && (
+				<div className="cs-settings-grid">
+					<Card
+						title={ __( 'Deleting leads', 'contact-sync' ) }
+						icon="trash"
+					>
+						<div className="cs-stack">
+							<Switch
+								checked={ settings.data.soft_delete }
+								onChange={ set( 'data', 'soft_delete' ) }
+								label={ __(
+									'Move deleted leads to the trash',
+									'contact-sync'
+								) }
+								description={ __(
+									'Deleted leads are hidden everywhere but can be restored from Submissions › Trash. When off, deleting a lead removes it immediately.',
+									'contact-sync'
+								) }
+							/>
+							<Field
+								label={ __(
+									'Empty the trash after (days)',
+									'contact-sync'
+								) }
+								htmlFor="cs-data-trash"
+								help={ __(
+									'Leads in the trash longer than this are deleted permanently. 0 keeps them until you empty the trash.',
+									'contact-sync'
+								) }
+							>
+								<Input
+									id="cs-data-trash"
+									type="number"
+									min={ 0 }
+									max={ 3650 }
+									value={ settings.data.trash_days }
+									onChange={ ( e ) =>
+										set(
+											'data',
+											'trash_days'
+										)( Number( e.target.value ) )
+									}
+								/>
+							</Field>
+						</div>
+					</Card>
+					<Card
+						title={ __( 'Log retention', 'contact-sync' ) }
+						icon="clock"
+					>
+						<div className="cs-stack">
+							<Field
+								label={ __(
+									'Keep logs for (days)',
+									'contact-sync'
+								) }
+								htmlFor="cs-data-logs"
+								help={ __(
+									'Applies to the Activity log and to each lead’s sync history. Older entries are removed once a day. 0 keeps them forever.',
+									'contact-sync'
+								) }
+							>
+								<Input
+									id="cs-data-logs"
+									type="number"
+									min={ 0 }
+									max={ 3650 }
+									value={ settings.data.log_days }
+									onChange={ ( e ) =>
+										set(
+											'data',
+											'log_days'
 										)( Number( e.target.value ) )
 									}
 								/>

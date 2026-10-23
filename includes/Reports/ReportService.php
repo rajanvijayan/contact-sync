@@ -303,7 +303,7 @@ class ReportService {
 		$start  = $from->setTime( 0, 0 )->setTimezone( $utc )->format( 'Y-m-d H:i:s' );
 		$end    = $to->add( new DateInterval( 'P1D' ) )->setTime( 0, 0 )->setTimezone( $utc )->format( 'Y-m-d H:i:s' );
 		$subs   = Db::table( 'submissions' );
-		$where  = 'created_at >= %s AND created_at < %s';
+		$where  = 'created_at >= %s AND created_at < %s AND deleted_at IS NULL';
 		$params = array( $start, $end );
 		if ( 'independent' === $agency ) {
 			$where .= ' AND agency_id IS NULL';

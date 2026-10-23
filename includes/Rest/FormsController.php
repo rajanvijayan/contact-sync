@@ -112,7 +112,12 @@ class FormsController extends Controller {
 				'fields'   => array(),
 			);
 		}
-		return $this->respond( ( new FormRepository() )->create( $data ), 201 );
+		$form = ( new FormRepository() )->create( $data );
+		if ( ! is_wp_error( $form ) ) {
+			/* translators: %s: form title */
+			$this->audit( $form, 'form_created', 'form', $form['id'], sprintf( __( 'Created form %s.', 'contact-sync' ), $form['title'] ) );
+		}
+		return $this->respond( $form, 201 );
 	}
 
 	/**
@@ -122,7 +127,20 @@ class FormsController extends Controller {
 	 * @return mixed
 	 */
 	public function update( WP_REST_Request $request ) {
-		return $this->respond( ( new FormRepository() )->update( (int) $request['id'], (array) $request->get_json_params() ) );
+		$repo   = new FormRepository();
+		$before = $repo->find( (int) $request['id'] );
+		$data   = (array) $request->get_json_params();
+		$form   = $repo->update( (int) $request['id'], $data );
+		if ( ! is_wp_error( $form ) && $before ) {
+			if ( ! empty( $data['is_default'] ) && ! $before['is_default'] ) {
+				/* translators: %s: form title */
+				$this->audit( $form, 'form_published', 'form', $form['id'], sprintf( __( 'Made form %s live in the portal.', 'contact-sync' ), $form['title'] ) );
+			} elseif ( $form['version'] !== $before['version'] || $form['title'] !== $before['title'] || $form['status'] !== $before['status'] ) {
+				/* translators: 1: form title, 2: version */
+				$this->audit( $form, 'form_updated', 'form', $form['id'], sprintf( __( 'Saved form %1$s (version %2$d).', 'contact-sync' ), $form['title'], $form['version'] ) );
+			}
+		}
+		return $this->respond( $form );
 	}
 
 	/**
@@ -132,7 +150,20 @@ class FormsController extends Controller {
 	 * @return mixed
 	 */
 	public function destroy( WP_REST_Request $request ) {
-		$result = ( new FormRepository() )->delete( (int) $request['id'] );
+		$repo   = new FormRepository();
+		$form   = $repo->find( (int) $request['id'] );
+		$result = $repo->delete( (int) $request['id'] );
+		if ( $form && ! is_wp_error( $result ) ) {
+			$archived = (bool) $repo->find( $form['id'] );
+			$this->audit(
+				$result,
+				$archived ? 'form_archived' : 'form_deleted',
+				'form',
+				$form['id'],
+				/* translators: %s: form title */
+				sprintf( $archived ? __( 'Archived form %s.', 'contact-sync' ) : __( 'Deleted form %s.', 'contact-sync' ), $form['title'] )
+			);
+		}
 		return is_wp_error( $result ) ? $result : $this->respond( array( 'deleted' => true ) );
 	}
 
@@ -148,16 +179,18 @@ class FormsController extends Controller {
 		if ( ! $form ) {
 			return new WP_Error( 'cs_not_found', __( 'Form not found.', 'contact-sync' ), array( 'status' => 404 ) );
 		}
-		return $this->respond(
-			$repo->create(
-				array(
-					/* translators: %s: form title */
-					'title'  => sprintf( __( '%s (copy)', 'contact-sync' ), $form['title'] ),
-					'schema' => $form['schema'],
-				)
-			),
-			201
+		$copy = $repo->create(
+			array(
+				/* translators: %s: form title */
+				'title'  => sprintf( __( '%s (copy)', 'contact-sync' ), $form['title'] ),
+				'schema' => $form['schema'],
+			)
 		);
+		if ( ! is_wp_error( $copy ) ) {
+			/* translators: 1: source form title, 2: new form title */
+			$this->audit( $copy, 'form_duplicated', 'form', $copy['id'], sprintf( __( 'Duplicated form %1$s as %2$s.', 'contact-sync' ), $form['title'], $copy['title'] ) );
+		}
+		return $this->respond( $copy, 201 );
 	}
 
 	/**

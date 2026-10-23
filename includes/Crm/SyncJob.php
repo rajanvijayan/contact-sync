@@ -110,7 +110,8 @@ class SyncJob {
 		$count = 0;
 		foreach ( $ids as $id ) {
 			$row = $this->repo->row( $id );
-			if ( ! $row || 'synced' === $row['sync_status'] ) {
+			// Held duplicates are released through DuplicateReview, not a retry.
+			if ( ! $row || ! empty( $row['deleted_at'] ) || in_array( $row['sync_status'], array( 'synced', 'review' ), true ) ) {
 				continue;
 			}
 			$this->repo->update(
@@ -161,7 +162,8 @@ class SyncJob {
 	 */
 	public function run( $submission_id ) {
 		$row = $this->repo->row( $submission_id );
-		if ( ! $row || in_array( $row['sync_status'], array( 'synced', 'duplicate' ), true ) ) {
+		// Trashed leads stay unsent; restoring one and retrying sends it.
+		if ( ! $row || ! empty( $row['deleted_at'] ) || in_array( $row['sync_status'], array( 'synced', 'duplicate', 'review' ), true ) ) {
 			return;
 		}
 		if ( ! self::active() ) {
@@ -183,7 +185,9 @@ class SyncJob {
 			$payload = $this->payload( $row );
 			$sync    = Settings::get( 'sync', array() );
 
-			if ( 'skip' === $sync['duplicate_check'] && ! empty( $payload['emailaddress1'] ) ) {
+			// An admin who approved a held duplicate has already decided it should be created.
+			$approved = ! empty( $row['duplicate_of'] ) && ! empty( $row['reviewed_at'] );
+			if ( 'skip' === $sync['duplicate_check'] && ! $approved && ! empty( $payload['emailaddress1'] ) ) {
 				$existing = $this->client->find_lead_by_email( $payload['emailaddress1'] );
 				if ( $existing ) {
 					$this->finish( $submission_id, 'duplicate', $existing, $attempt, 'find_lead', __( 'An open lead with this email already exists in Dynamics 365.', 'contact-sync' ), $payload );

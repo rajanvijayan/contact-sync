@@ -93,7 +93,12 @@ class RepsController extends Controller {
 	 * @return mixed
 	 */
 	public function invite( WP_REST_Request $request ) {
-		return $this->respond( ( new RepService() )->invite( (array) $request->get_json_params() ), 201 );
+		$rep = ( new RepService() )->invite( (array) $request->get_json_params() );
+		if ( ! is_wp_error( $rep ) ) {
+			/* translators: %s: rep email */
+			$this->audit( $rep, 'rep_invited', 'rep', $rep['id'], sprintf( __( 'Invited %s.', 'contact-sync' ), $rep['email'] ) );
+		}
+		return $this->respond( $rep, 201 );
 	}
 
 	/**
@@ -103,7 +108,12 @@ class RepsController extends Controller {
 	 * @return mixed
 	 */
 	public function update( WP_REST_Request $request ) {
-		return $this->respond( ( new RepService() )->update( (int) $request['id'], (array) $request->get_json_params() ) );
+		$data = (array) $request->get_json_params();
+		$rep  = ( new RepService() )->update( (int) $request['id'], $data );
+		if ( ! is_wp_error( $rep ) ) {
+			self::log_rep_update( $rep, $data );
+		}
+		return $this->respond( $rep );
 	}
 
 	/**
@@ -139,6 +149,37 @@ class RepsController extends Controller {
 		}
 		require_once ABSPATH . 'wp-admin/includes/user.php';
 		wp_delete_user( $user->ID );
+		/* translators: 1: rep name, 2: email */
+		$this->audit( true, 'rep_deleted', 'rep', $user->ID, sprintf( __( 'Deleted rep %1$s (%2$s).', 'contact-sync' ), $user->display_name, $user->user_email ) );
 		return $this->respond( array( 'deleted' => true ) );
+	}
+
+	/**
+	 * Log a rep change; status changes get their own action so they are easy to find.
+	 *
+	 * @param array $rep  Updated profile.
+	 * @param array $data Submitted fields.
+	 */
+	public static function log_rep_update( array $rep, array $data ) {
+		$label = sprintf( '%s (%s)', $rep['name'], $rep['email'] );
+		if ( isset( $data['status'] ) && in_array( $data['status'], array( RepService::STATUS_ACTIVE, RepService::STATUS_DISABLED ), true ) && 1 === count( $data ) ) {
+			$disabled = RepService::STATUS_DISABLED === $data['status'];
+			\ContactSync\Support\ActivityLog::record(
+				$disabled ? 'rep_disabled' : 'rep_enabled',
+				'rep',
+				$rep['id'],
+				/* translators: %s: rep name and email */
+				sprintf( $disabled ? __( 'Disabled portal access for %s.', 'contact-sync' ) : __( 'Enabled portal access for %s.', 'contact-sync' ), $label )
+			);
+			return;
+		}
+		\ContactSync\Support\ActivityLog::record(
+			'rep_updated',
+			'rep',
+			$rep['id'],
+			/* translators: %s: rep name and email */
+			sprintf( __( 'Updated rep %s.', 'contact-sync' ), $label ),
+			array_intersect_key( $data, array_flip( array( 'first_name', 'last_name', 'agency_id', 'role', 'status' ) ) )
+		);
 	}
 }

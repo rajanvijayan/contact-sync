@@ -16,12 +16,12 @@ defined( 'ABSPATH' ) || exit;
  */
 class SubmissionRepository {
 
-	const STATUSES = array( 'queued', 'syncing', 'synced', 'failed', 'duplicate' );
+	const STATUSES = array( 'queued', 'syncing', 'synced', 'failed', 'duplicate', 'review' );
 
 	/**
 	 * Insert a submission.
 	 *
-	 * @param array $data form_id, form_version, rep_id, agency_id, batch_id, source, data.
+	 * @param array $data form_id, form_version, rep_id, agency_id, batch_id, source, data, email, sync_status, duplicate_of.
 	 * @return int
 	 */
 	public function insert( array $data ) {
@@ -37,12 +37,83 @@ class SubmissionRepository {
 				'batch_id'     => ! empty( $data['batch_id'] ) ? (int) $data['batch_id'] : null,
 				'source'       => $data['source'] ?? 'form',
 				'data'         => wp_json_encode( $data['data'] ),
-				'sync_status'  => 'queued',
+				'email'        => self::normalize_email( $data['email'] ?? '' ),
+				'sync_status'  => $data['sync_status'] ?? 'queued',
+				'duplicate_of' => ! empty( $data['duplicate_of'] ) ? (int) $data['duplicate_of'] : null,
 				'created_at'   => $now,
 				'updated_at'   => $now,
 			)
 		);
 		return (int) $wpdb->insert_id;
+	}
+
+	/**
+	 * Lower-cased, trimmed email used for duplicate matching.
+	 *
+	 * @param string $email Email.
+	 * @return string|null Null when empty.
+	 */
+	public static function normalize_email( $email ) {
+		$email = strtolower( trim( (string) $email ) );
+		return '' === $email ? null : substr( $email, 0, 190 );
+	}
+
+	/**
+	 * Earliest submission with this email.
+	 *
+	 * @param string $email Email.
+	 * @return int|null Submission ID.
+	 */
+	public function find_by_email( $email ) {
+		global $wpdb;
+		$email = self::normalize_email( $email );
+		if ( ! $email ) {
+			return null;
+		}
+		$table = Db::table( 'submissions' );
+		$id    = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE email = %s AND deleted_at IS NULL ORDER BY id ASC LIMIT 1", $email ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $id ? (int) $id : null;
+	}
+
+	/**
+	 * Earliest submission ID for each of the given emails that already exists.
+	 *
+	 * @param string[] $emails Emails.
+	 * @return array<string,int> Normalized email => submission ID.
+	 */
+	public function find_by_emails( array $emails ) {
+		global $wpdb;
+		$emails = array_values( array_unique( array_filter( array_map( array( self::class, 'normalize_email' ), $emails ) ) ) );
+		if ( ! $emails ) {
+			return array();
+		}
+		$table = Db::table( 'submissions' );
+		$in    = implode( ', ', array_fill( 0, count( $emails ), '%s' ) );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT email, MIN(id) AS id FROM {$table} WHERE email IN ({$in}) AND deleted_at IS NULL GROUP BY email", $emails ), ARRAY_A );
+		return array_map( 'intval', wp_list_pluck( $rows, 'id', 'email' ) );
+	}
+
+	/**
+	 * Fill the email column for submissions stored before it existed.
+	 */
+	public function backfill_emails() {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		$last  = 0;
+		do {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, data FROM {$table} WHERE id > %d AND email IS NULL ORDER BY id ASC LIMIT 500", $last ), ARRAY_A );
+			foreach ( $rows as $row ) {
+				$last  = (int) $row['id'];
+				$data  = json_decode( $row['data'], true );
+				$email = self::normalize_email( $data['summary']['email'] ?? '' );
+				if ( $email ) {
+					$wpdb->update( $table, array( 'email' => $email ), array( 'id' => $last ) );
+				}
+			}
+			$fetched = count( $rows );
+		} while ( 500 === $fetched );
 	}
 
 	/**
@@ -65,14 +136,16 @@ class SubmissionRepository {
 	/**
 	 * Formatted submission with related names.
 	 *
-	 * @param int $id Submission ID.
+	 * @param int  $id            Submission ID.
+	 * @param bool $with_trashed  Also find a submission in the trash.
 	 * @return array|null
 	 */
-	public function find( $id ) {
+	public function find( $id, $with_trashed = false ) {
 		$result = $this->query(
 			array(
 				'id'       => (int) $id,
 				'per_page' => 1,
+				'trashed'  => $with_trashed ? 'any' : '',
 			)
 		);
 		return $result['items'][0] ?? null;
@@ -91,7 +164,7 @@ class SubmissionRepository {
 	}
 
 	/**
-	 * Delete a submission and its log.
+	 * Permanently delete a submission and its log.
 	 *
 	 * @param int $id Submission ID.
 	 * @return bool
@@ -100,6 +173,61 @@ class SubmissionRepository {
 		global $wpdb;
 		$wpdb->delete( Db::table( 'sync_log' ), array( 'submission_id' => (int) $id ) );
 		return (bool) $wpdb->delete( Db::table( 'submissions' ), array( 'id' => (int) $id ) );
+	}
+
+	/**
+	 * Move a submission to the trash. Hidden everywhere, kept until restored or emptied.
+	 *
+	 * @param int $id      Submission ID.
+	 * @param int $user_id Who trashed it.
+	 * @return bool False when missing or already trashed.
+	 */
+	public function trash( $id, $user_id ) {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (bool) $wpdb->query( $wpdb->prepare( "UPDATE {$table} SET deleted_at = %s, deleted_by = %d WHERE id = %d AND deleted_at IS NULL", Db::now(), (int) $user_id, (int) $id ) );
+	}
+
+	/**
+	 * Take a submission out of the trash.
+	 *
+	 * @param int $id Submission ID.
+	 * @return bool False when missing or not trashed.
+	 */
+	public function restore( $id ) {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (bool) $wpdb->query( $wpdb->prepare( "UPDATE {$table} SET deleted_at = NULL, deleted_by = NULL WHERE id = %d AND deleted_at IS NOT NULL", (int) $id ) );
+	}
+
+	/**
+	 * Permanently delete submissions trashed more than $days ago (0 = all of the trash).
+	 *
+	 * @param int $days Days to keep in the trash.
+	 * @return int Submissions removed.
+	 */
+	public function purge_trash( $days = 0 ) {
+		global $wpdb;
+		$table = Db::table( 'submissions' );
+		$ids   = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( "SELECT id FROM {$table} WHERE deleted_at IS NOT NULL AND deleted_at < %s", gmdate( 'Y-m-d H:i:s', time() - (int) $days * DAY_IN_SECONDS ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ( $ids as $id ) {
+			$this->delete( $id );
+		}
+		return count( $ids );
+	}
+
+	/**
+	 * Delete sync log entries older than $days.
+	 *
+	 * @param int $days Days to keep.
+	 * @return int Rows removed.
+	 */
+	public function purge_logs( $days ) {
+		global $wpdb;
+		$table = Db::table( 'sync_log' );
+		return (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE created_at < %s", gmdate( 'Y-m-d H:i:s', time() - (int) $days * DAY_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	/**
@@ -283,6 +411,14 @@ class SubmissionRepository {
 		$where  = array( '1=1' );
 		$params = array();
 
+		// Trashed submissions are hidden unless asked for: 'only' lists the trash, 'any' includes it.
+		$trashed = $args['trashed'] ?? '';
+		if ( 'only' === $trashed ) {
+			$where[] = 's.deleted_at IS NOT NULL';
+		} elseif ( 'any' !== $trashed ) {
+			$where[] = 's.deleted_at IS NULL';
+		}
+
 		if ( ! empty( $args['id'] ) ) {
 			$where[]  = 's.id = %d';
 			$params[] = (int) $args['id'];
@@ -338,6 +474,17 @@ class SubmissionRepository {
 	}
 
 	/**
+	 * Display name of a user, or a placeholder when deleted.
+	 *
+	 * @param int $id User ID.
+	 * @return string
+	 */
+	private static function user_name( $id ) {
+		$user = get_userdata( $id );
+		return $user ? $user->display_name : __( 'Deleted user', 'contact-sync' );
+	}
+
+	/**
 	 * Shape a row for API output.
 	 *
 	 * @param array $row Row.
@@ -348,33 +495,37 @@ class SubmissionRepository {
 		$user = get_userdata( (int) $row['rep_id'] );
 
 		return array(
-			'id'          => (int) $row['id'],
-			'form'        => array(
+			'id'           => (int) $row['id'],
+			'form'         => array(
 				'id'      => (int) $row['form_id'],
 				'title'   => $row['form_title'] ?? '',
 				'version' => (int) $row['form_version'],
 			),
-			'rep'         => array(
+			'rep'          => array(
 				'id'    => (int) $row['rep_id'],
 				'name'  => $user ? $user->display_name : __( 'Deleted user', 'contact-sync' ),
 				'email' => $user ? $user->user_email : '',
 			),
-			'agency'      => $row['agency_id'] ? array(
+			'agency'       => $row['agency_id'] ? array(
 				'id'   => (int) $row['agency_id'],
 				'name' => $row['agency_name'] ?? '',
 			) : null,
-			'batch_id'    => $row['batch_id'] ? (int) $row['batch_id'] : null,
-			'source'      => $row['source'],
-			'values'      => $data['values'] ?? array(),
-			'labels'      => $data['labels'] ?? array(),
-			'display'     => $data['display'] ?? array(),
-			'summary'     => $data['summary'] ?? array(),
-			'status'      => $row['sync_status'],
-			'crm_lead_id' => $row['crm_lead_id'],
-			'attempts'    => (int) $row['attempts'],
-			'last_error'  => $row['last_error'],
-			'created_at'  => Db::iso( $row['created_at'] ),
-			'synced_at'   => Db::iso( $row['synced_at'] ),
+			'batch_id'     => $row['batch_id'] ? (int) $row['batch_id'] : null,
+			'source'       => $row['source'],
+			'values'       => $data['values'] ?? array(),
+			'labels'       => $data['labels'] ?? array(),
+			'display'      => $data['display'] ?? array(),
+			'summary'      => $data['summary'] ?? array(),
+			'status'       => $row['sync_status'],
+			'duplicate_of' => $row['duplicate_of'] ? (int) $row['duplicate_of'] : null,
+			'reviewed_at'  => Db::iso( $row['reviewed_at'] ),
+			'deleted_at'   => Db::iso( $row['deleted_at'] ),
+			'deleted_by'   => $row['deleted_by'] ? self::user_name( (int) $row['deleted_by'] ) : null,
+			'crm_lead_id'  => $row['crm_lead_id'],
+			'attempts'     => (int) $row['attempts'],
+			'last_error'   => $row['last_error'],
+			'created_at'   => Db::iso( $row['created_at'] ),
+			'synced_at'    => Db::iso( $row['synced_at'] ),
 		);
 	}
 }

@@ -86,7 +86,19 @@ class SettingsController extends Controller {
 	 */
 	public function update( WP_REST_Request $request ) {
 		$was_ready = SyncJob::active();
+		$before    = Settings::all();
 		Settings::update( (array) $request->get_json_params() );
+		$changed = self::changed_keys( $before, Settings::all() );
+		if ( $changed ) {
+			\ContactSync\Support\ActivityLog::record(
+				'settings_updated',
+				'settings',
+				null,
+				/* translators: %s: list of setting names */
+				sprintf( __( 'Changed settings: %s.', 'contact-sync' ), implode( ', ', $changed ) ),
+				array( 'changed' => $changed )
+			);
+		}
 		if ( ! $was_ready && SyncJob::active() ) {
 			( new SyncJob() )->release_waiting();
 		}
@@ -146,6 +158,30 @@ class SettingsController extends Controller {
 	 * @return mixed
 	 */
 	public function sync_queued() {
-		return $this->respond( array( 'queued' => ( new SyncJob() )->release_waiting() ) );
+		$queued = ( new SyncJob() )->release_waiting();
+		if ( $queued ) {
+			/* translators: %d: number of leads */
+			\ContactSync\Support\ActivityLog::record( 'sync_queued', 'settings', null, sprintf( _n( 'Queued %d waiting lead for sync.', 'Queued %d waiting leads for sync.', $queued, 'contact-sync' ), $queued ) );
+		}
+		return $this->respond( array( 'queued' => $queued ) );
+	}
+
+	/**
+	 * Dot paths of settings whose value changed. Values are never logged, so secrets stay out of the log.
+	 *
+	 * @param array $before Settings before.
+	 * @param array $after  Settings after.
+	 * @return string[] e.g. sync.enabled
+	 */
+	public static function changed_keys( array $before, array $after ) {
+		$changed = array();
+		foreach ( $after as $section => $values ) {
+			foreach ( (array) $values as $key => $value ) {
+				if ( ( $before[ $section ][ $key ] ?? null ) !== $value ) {
+					$changed[] = $section . '.' . $key;
+				}
+			}
+		}
+		return $changed;
 	}
 }

@@ -19,7 +19,7 @@ import {
 import { Link } from '../router';
 import { usePortal } from './context';
 
-const FINAL = [ 'synced', 'failed', 'duplicate' ];
+const FINAL = [ 'synced', 'failed', 'duplicate', 'review' ];
 
 function SubmittedPanel( { submission, message, onAnother } ) {
 	const [ item, setItem ] = useState( submission );
@@ -55,6 +55,10 @@ function SubmittedPanel( { submission, message, onAnother } ) {
 		),
 		duplicate: __(
 			'This contact already exists as an open lead in Dynamics 365, so no duplicate was created.',
+			'contact-sync'
+		),
+		review: __(
+			'A lead with this email was submitted before, so this one is held until an administrator approves it.',
 			'contact-sync'
 		),
 		failed: __(

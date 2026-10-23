@@ -63,7 +63,7 @@ There are two ways reps get an account:
 3. Choose **Independent**, or **Agency rep** and pick the agency.
 4. Choose a role:
    - **Rep:** submits and tracks their own leads.
-   - **Agency manager:** can also see every lead submitted by their agency (the **Agency leads** page in the portal).
+   - **Agency manager:** can also see every lead submitted by their agency (the **Agency leads** page in the portal) and disable or re-enable portal access for the reps in their agency (the **Team** page). The Reps list shows when a rep was disabled by their agency manager; if you change that rep's status yourself, the manager can no longer undo it. Every change is recorded in the Activity log.
 5. Click **Send invitation**. The rep receives an email with a link to set their password. The link is valid for 24 hours; use **Resend invitation** if it expires.
 
 ### Row actions (⋮ menu)
@@ -158,12 +158,17 @@ With no field selected, the **Form settings** panel shows the full mapping and l
   - **Queued:** waiting to be sent, or waiting for an automatic retry.
   - **Syncing:** being sent now.
   - **Synced:** created in Dynamics; the lead ID is shown.
-  - **Duplicate:** an open Lead with the same email already existed (only when duplicate checking is on).
+  - **In review:** the email matches an earlier submission (or an earlier row in the same bulk upload), so the lead is held and not sent until you decide. Open it to see the earlier lead, then **Approve and send** or **Reject**. With the *In review* filter selected you can approve or reject several rows at once. Turn this off with **Hold duplicates for review** under Settings › Sync.
+  - **Duplicate:** an open Lead with the same email already existed in Dynamics (only when Dynamics duplicate checking is on), or you rejected the lead from review.
   - **Failed:** Dynamics rejected it, or all retries were used. The error is shown.
 - Click a row to see every answer, who submitted it, the Dynamics lead ID and the **sync history**. Each attempt shows the exact payload sent and the response under *Technical details*.
 - **Retry sync** re-queues a lead (also available for several selected rows).
 - **Export CSV** downloads the filtered list with all answers.
-- **Delete** removes the record from WordPress only; it does not delete anything in Dynamics.
+- **Delete** removes the record from WordPress only; it does not delete anything in Dynamics. With **soft delete** on (Settings › Data & logs), deleted leads go to **Trash** instead: they are hidden from reps, reports, duplicate checks and sync, and can be **restored** or **deleted permanently**. **Empty trash** deletes everything in it, and leads are removed automatically after the number of days you set.
+
+## Activity log
+
+The **Activity log** lists who did what and when: leads moved to the trash, restored or deleted permanently, emptying the trash, duplicate approvals and rejections, sync retries, rep invitations and changes (including disabling access), agency and form changes, settings changes (names only, never values) and the automatic clean-up. Filter by type, date or text, and click an entry to open the lead, form, agency list or rep list it refers to.
 
 ## Settings
 
@@ -173,6 +178,7 @@ With no field selected, the **Form settings** panel shows the full mapping and l
 | Sync | Pause or resume sync, duplicate handling, number of retries, Topic template, agency/rep columns on the Lead, adding details to the description, **Sync queued leads now** |
 | Branding | Product name, tagline, logo, brand colour and support email used across the portal and emails |
 | Emails | Sender name and address, subject and text of the verification, invitation and password-reset emails, **Send test email** |
+| Data & logs | **Soft delete** (move deleted leads to Trash), days before the trash is emptied, and how long the Activity log and per-lead sync history are kept (0 keeps them forever). Clean-up runs once a day |
 | Security | Sign-in lockout (attempts and minutes), subdomain matching, bulk upload limits (rows and file size) |
 
 Always-on protections: email verification for sign-ups, rate-limited sign-up, sign-in and password reset, an encrypted CRM secret, the public-site lockdown and disabled XML-RPC.

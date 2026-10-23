@@ -8,6 +8,7 @@
 namespace ContactSync\Import;
 
 use ContactSync\Forms\Validator;
+use ContactSync\Submissions\SubmissionRepository;
 use ContactSync\Submissions\SubmissionService;
 use ContactSync\Support\Settings;
 use WP_Error;
@@ -37,14 +38,23 @@ class CsvImporter {
 	private $submissions;
 
 	/**
+	 * Stored submissions, for duplicate lookups.
+	 *
+	 * @var SubmissionRepository
+	 */
+	private $repo;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param BatchRepository|null   $batches     Batches.
-	 * @param SubmissionService|null $submissions Submissions.
+	 * @param BatchRepository|null      $batches     Batches.
+	 * @param SubmissionService|null    $submissions Submissions.
+	 * @param SubmissionRepository|null $repo        Stored submissions.
 	 */
-	public function __construct( ?BatchRepository $batches = null, ?SubmissionService $submissions = null ) {
+	public function __construct( ?BatchRepository $batches = null, ?SubmissionService $submissions = null, ?SubmissionRepository $repo = null ) {
 		$this->batches     = $batches ? $batches : new BatchRepository();
 		$this->submissions = $submissions ? $submissions : new SubmissionService();
+		$this->repo        = $repo ? $repo : new SubmissionRepository();
 	}
 
 	/**
@@ -52,16 +62,39 @@ class CsvImporter {
 	 *
 	 * @param array $form Form.
 	 * @param array $rows Rows keyed by field key.
-	 * @return array[] Per row: index, errors.
+	 * @return array[] Per row: index, errors, duplicate (existing|file|null).
 	 */
 	public function validate( array $form, array $rows ) {
 		$report = array();
+		$emails = array();
 		foreach ( array_values( $rows ) as $index => $row ) {
 			$result   = Validator::validate( $form['schema'], is_array( $row ) ? $row : array(), true );
 			$report[] = array(
-				'index'  => $index,
-				'errors' => (object) $result['errors'],
+				'index'     => $index,
+				'errors'    => (object) $result['errors'],
+				'duplicate' => null,
 			);
+			if ( ! $result['errors'] ) {
+				$emails[ $index ] = SubmissionRepository::normalize_email( SubmissionService::summary( $form['schema'], $result['values'] )['email'] );
+			}
+		}
+		if ( ! SubmissionService::hold_duplicates() ) {
+			return $report;
+		}
+
+		// Mirrors import(): a row is held when its email is already stored or appears on an earlier valid row.
+		$existing = $this->repo->find_by_emails( array_values( $emails ) );
+		$seen     = array();
+		foreach ( $emails as $index => $email ) {
+			if ( ! $email ) {
+				continue;
+			}
+			if ( isset( $existing[ $email ] ) ) {
+				$report[ $index ]['duplicate'] = 'existing';
+			} elseif ( isset( $seen[ $email ] ) ) {
+				$report[ $index ]['duplicate'] = 'file';
+			}
+			$seen[ $email ] = true;
 		}
 		return $report;
 	}
