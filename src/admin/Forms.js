@@ -53,7 +53,7 @@ export default function Forms() {
 			<PageHeader
 				title={ __( 'Forms', 'contact-sync' ) }
 				description={ __(
-					'Design the lead form reps fill in. The form marked “Live” is used in the portal and for bulk uploads.',
+					'Reps only ever see the form marked “Live”, in the portal and for bulk uploads. Other forms are drafts: build or duplicate one to prepare changes, then make it live when it is ready.',
 					'contact-sync'
 				) }
 				actions={

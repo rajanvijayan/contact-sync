@@ -68,6 +68,15 @@ class SyncJob {
 	}
 
 	/**
+	 * Whether queued submissions can be delivered right now.
+	 *
+	 * @return bool False while sync is paused or Dynamics 365 is not connected.
+	 */
+	public static function active() {
+		return Settings::get( 'sync.enabled', true ) && Settings::dynamics_configured();
+	}
+
+	/**
 	 * Schedule a submission for sync.
 	 *
 	 * @param int  $submission_id Submission ID.
@@ -155,7 +164,7 @@ class SyncJob {
 		if ( ! $row || in_array( $row['sync_status'], array( 'synced', 'duplicate' ), true ) ) {
 			return;
 		}
-		if ( ! Settings::get( 'sync.enabled', true ) || ! Settings::dynamics_configured() ) {
+		if ( ! self::active() ) {
 			// Paused or not connected yet: stay queued; release_waiting() picks them up later.
 			return;
 		}

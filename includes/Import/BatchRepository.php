@@ -7,6 +7,7 @@
 
 namespace ContactSync\Import;
 
+use ContactSync\Crm\SyncJob;
 use ContactSync\Submissions\SubmissionRepository;
 use ContactSync\Support\Db;
 
@@ -96,6 +97,8 @@ class BatchRepository {
 			'total'      => (int) $row['total'],
 			'counts'     => $counts,
 			'complete'   => 0 === $pending,
+			// Pending leads will not move until sync is resumed or Dynamics 365 is connected.
+			'held'       => $pending > 0 && ! SyncJob::active(),
 			'created_at' => Db::iso( $row['created_at'] ),
 		);
 	}

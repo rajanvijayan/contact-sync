@@ -85,9 +85,9 @@ class SettingsController extends Controller {
 	 * @return mixed
 	 */
 	public function update( WP_REST_Request $request ) {
-		$was_ready = Settings::dynamics_configured() && Settings::get( 'sync.enabled', true );
+		$was_ready = SyncJob::active();
 		Settings::update( (array) $request->get_json_params() );
-		if ( ! $was_ready && Settings::dynamics_configured() && Settings::get( 'sync.enabled', true ) ) {
+		if ( ! $was_ready && SyncJob::active() ) {
 			( new SyncJob() )->release_waiting();
 		}
 		return $this->respond( Settings::for_admin() );
