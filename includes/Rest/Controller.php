@@ -59,6 +59,9 @@ abstract class Controller {
 		if ( ! user_can( $user, Roles::CAP_SUBMIT ) || RepService::STATUS_ACTIVE !== RepService::status( $user->ID ) ) {
 			return new WP_Error( 'rest_forbidden', __( 'You do not have access to the portal.', 'contact-sync' ), array( 'status' => 403 ) );
 		}
+		if ( Roles::is_portal_user( $user ) && RepService::agency_disabled( $user->ID ) ) {
+			return new WP_Error( 'rest_forbidden', __( 'Access for your agency has been disabled. Please contact your administrator.', 'contact-sync' ), array( 'status' => 403 ) );
+		}
 		return true;
 	}
 
