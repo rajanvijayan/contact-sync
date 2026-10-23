@@ -41,20 +41,23 @@ function SubmittedPanel( { submission, message, onAnother } ) {
 	const info = {
 		queued: isCrmConnected()
 			? __(
-					'Your lead is queued and will be sent to Dynamics 365 in a moment.',
+					'Your lead is queued and will be delivered to the sales team in a moment.',
 					'contact-sync'
 			  )
 			: __(
-					'Your lead is saved and will be sent to Dynamics 365 once the connection is set up.',
+					'Your lead is saved and will be delivered to the sales team shortly.',
 					'contact-sync'
 			  ),
-		syncing: __( 'Sending your lead to Dynamics 365…', 'contact-sync' ),
+		syncing: __(
+			'Delivering your lead to the sales team…',
+			'contact-sync'
+		),
 		synced: __(
-			'Your lead is now in Dynamics 365 and the sales team has been notified.',
+			'Your lead has been delivered and the sales team has been notified.',
 			'contact-sync'
 		),
 		duplicate: __(
-			'This contact already exists as an open lead in Dynamics 365, so no duplicate was created.',
+			'This contact is already an open lead with the sales team, so no duplicate was created.',
 			'contact-sync'
 		),
 		review: __(

@@ -14,7 +14,22 @@ const AWAITING = {
 	tone: 'neutral',
 };
 
+// Reps never see how leads are delivered, so the portal uses neutral wording.
+const PORTAL_STATUS = {
+	queued: { label: __( 'Pending', 'contact-sync' ), tone: 'neutral' },
+	syncing: { label: __( 'Delivering', 'contact-sync' ), tone: 'info' },
+	synced: { label: __( 'Delivered', 'contact-sync' ), tone: 'success' },
+};
+
 let crmConnected = true;
+let portalLabels = false;
+
+/**
+ * Use the rep-facing status labels (called once by the portal app).
+ */
+export function enablePortalLabels() {
+	portalLabels = true;
+}
 
 /**
  * Record whether Dynamics 365 is connected, which changes how pending leads read.
@@ -43,9 +58,12 @@ export function isCrmConnected() {
  */
 export function statusMeta( status ) {
 	if ( ! crmConnected && ( status === 'queued' || status === 'failed' ) ) {
-		return AWAITING;
+		return portalLabels ? PORTAL_STATUS.queued : AWAITING;
 	}
-	return STATUS[ status ] || { label: status, tone: 'neutral' };
+	return (
+		( portalLabels && PORTAL_STATUS[ status ] ) ||
+		STATUS[ status ] || { label: status, tone: 'neutral' }
+	);
 }
 
 export const REP_STATUS = {

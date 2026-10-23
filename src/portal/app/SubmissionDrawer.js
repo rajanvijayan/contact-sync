@@ -4,6 +4,37 @@ import { displayValue, formatDate, isCrmConnected } from '../../shared/format';
 import { Alert, Badge, CopyButton, Drawer, StatusBadge } from '../../shared/ui';
 import { leadName } from './Dashboard';
 
+/**
+ * Why a lead ended as a duplicate. Reps get the outcome without CRM details.
+ *
+ * @param {Object}  item  Submission.
+ * @param {boolean} admin Admin view.
+ * @return {string} Message.
+ */
+function duplicateMessage( item, admin ) {
+	const rejected = !! item.reviewed_at;
+	if ( admin ) {
+		return rejected
+			? __(
+					'An administrator marked this lead as a duplicate of an earlier submission, so it was not sent to Dynamics 365.',
+					'contact-sync'
+			  )
+			: __(
+					'An open lead with this email already existed in Dynamics 365, so no new record was created.',
+					'contact-sync'
+			  );
+	}
+	return rejected
+		? __(
+				'An administrator marked this lead as a duplicate of an earlier submission, so it was not delivered.',
+				'contact-sync'
+		  )
+		: __(
+				'This contact was already an open lead with the sales team, so no new record was created.',
+				'contact-sync'
+		  );
+}
+
 export function SubmissionDetails( { item, admin = false } ) {
 	const awaiting =
 		! isCrmConnected() && [ 'queued', 'failed' ].includes( item.status );
@@ -13,30 +44,41 @@ export function SubmissionDetails( { item, admin = false } ) {
 				<div className="cs-mb">
 					<Alert
 						tone="info"
-						title={ __( 'Awaiting connection', 'contact-sync' ) }
-					>
-						{ __(
-							'This lead is saved and will be sent to Dynamics 365 automatically once the connection is set up.',
-							'contact-sync'
-						) }
-					</Alert>
-				</div>
-			) }
-			{ ! awaiting && item.status === 'failed' && item.last_error && (
-				<div className="cs-mb">
-					<Alert
-						tone="danger"
-						title={ __( 'Delivery failed', 'contact-sync' ) }
+						title={
+							admin
+								? __( 'Awaiting connection', 'contact-sync' )
+								: __( 'Saved', 'contact-sync' )
+						}
 					>
 						{ admin
-							? item.last_error
+							? __(
+									'This lead is saved and will be sent to Dynamics 365 automatically once the connection is set up.',
+									'contact-sync'
+							  )
 							: __(
-									'This lead could not be delivered automatically. The admin team has been notified and will follow up.',
+									'This lead is saved and will be delivered to the sales team automatically.',
 									'contact-sync'
 							  ) }
 					</Alert>
 				</div>
 			) }
+			{ ! awaiting &&
+				item.status === 'failed' &&
+				( ! admin || item.last_error ) && (
+					<div className="cs-mb">
+						<Alert
+							tone="danger"
+							title={ __( 'Delivery failed', 'contact-sync' ) }
+						>
+							{ admin
+								? item.last_error
+								: __(
+										'This lead could not be delivered automatically. The admin team has been notified and will follow up.',
+										'contact-sync'
+								  ) }
+						</Alert>
+					</div>
+				) }
 			{ item.status === 'review' && (
 				<div className="cs-mb">
 					<Alert
@@ -53,15 +95,7 @@ export function SubmissionDetails( { item, admin = false } ) {
 			{ item.status === 'duplicate' && (
 				<div className="cs-mb">
 					<Alert tone="warning">
-						{ item.crm_lead_id
-							? __(
-									'An open lead with this email already existed in Dynamics 365, so no new record was created.',
-									'contact-sync'
-							  )
-							: __(
-									'An administrator marked this lead as a duplicate of an earlier submission, so it was not sent to Dynamics 365.',
-									'contact-sync'
-							  ) }
+						{ duplicateMessage( item, admin ) }
 					</Alert>
 				</div>
 			) }
@@ -123,7 +157,7 @@ export function SubmissionDetails( { item, admin = false } ) {
 						<dd>{ formatDate( item.synced_at ) }</dd>
 					</div>
 				) }
-				{ item.crm_lead_id && (
+				{ admin && item.crm_lead_id && (
 					<div className="cs-dl__row">
 						<dt>{ __( 'Dynamics lead ID', 'contact-sync' ) }</dt>
 						<dd className="cs-dl__copy">

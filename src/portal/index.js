@@ -1,5 +1,5 @@
 import { createRoot, useEffect } from '@wordpress/element';
-import { setCrmConnected } from '../shared/format';
+import { setCrmConnected, enablePortalLabels } from '../shared/format';
 import { UIProvider } from '../shared/ui';
 import config from './config';
 import { usePath } from './router';
@@ -20,7 +20,8 @@ const SCREENS = {
 	app: AppShell,
 };
 
-setCrmConnected( config.crmConnected );
+enablePortalLabels();
+setCrmConnected( config.deliveryActive );
 
 /**
  * Pick the screen from the current path so in-app links between the sign-in

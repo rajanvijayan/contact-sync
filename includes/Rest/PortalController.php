@@ -7,7 +7,9 @@
 
 namespace ContactSync\Rest;
 
+use ContactSync\Crm\SyncJob;
 use ContactSync\Forms\FormRepository;
+use ContactSync\Forms\FormSchema;
 use ContactSync\Import\BatchRepository;
 use ContactSync\Import\CsvImporter;
 use ContactSync\Import\SampleCsv;
@@ -133,14 +135,17 @@ class PortalController extends Controller {
 		$form  = ( new FormRepository() )->get_default();
 		$repo  = new SubmissionRepository();
 		$scope = array( 'rep_id' => $user->ID );
+		if ( $form ) {
+			$form['schema'] = FormSchema::for_portal( $form['schema'] );
+		}
 
 		return $this->respond(
 			array(
-				'user'          => ( new RepService() )->profile( $user ),
-				'form'          => $form,
-				'stats'         => $repo->stats( $scope, 14 ),
-				'recent'        => $repo->query( array_merge( $scope, array( 'per_page' => 5 ) ) )['items'],
-				'crm_connected' => Settings::dynamics_configured(),
+				'user'            => ( new RepService() )->profile( $user ),
+				'form'            => $form,
+				'stats'           => $repo->stats( $scope, 14 ),
+				'recent'          => array_map( array( self::class, 'for_rep' ), $repo->query( array_merge( $scope, array( 'per_page' => 5 ) ) )['items'] ),
+				'delivery_active' => SyncJob::active(),
 			)
 		);
 	}
@@ -164,7 +169,9 @@ class PortalController extends Controller {
 		if ( is_wp_error( $scope ) ) {
 			return $scope;
 		}
-		return $this->paginated( ( new SubmissionRepository() )->query( array_merge( $args, $scope ) ), (int) $request['per_page'] );
+		$result          = ( new SubmissionRepository() )->query( array_merge( $args, $scope ) );
+		$result['items'] = array_map( array( self::class, 'for_rep' ), $result['items'] );
+		return $this->paginated( $result, (int) $request['per_page'] );
 	}
 
 	/**
@@ -182,7 +189,7 @@ class PortalController extends Controller {
 		if ( is_wp_error( $id ) ) {
 			return $id;
 		}
-		return $this->respond( ( new SubmissionRepository() )->find( $id ), 201 );
+		return $this->respond( self::for_rep( ( new SubmissionRepository() )->find( $id ) ), 201 );
 	}
 
 	/**
@@ -196,7 +203,7 @@ class PortalController extends Controller {
 		if ( ! $item || ! $this->can_view( $item ) ) {
 			return new WP_Error( 'cs_not_found', __( 'Submission not found.', 'contact-sync' ), array( 'status' => 404 ) );
 		}
-		return $this->respond( $item );
+		return $this->respond( self::for_rep( $item ) );
 	}
 
 	/**
@@ -386,5 +393,21 @@ class PortalController extends Controller {
 			);
 		}
 		return $this->respond( $rep );
+	}
+
+	/**
+	 * A submission as reps see it: no CRM record IDs, sync errors or review internals.
+	 *
+	 * @param array|null $item Formatted submission.
+	 * @return array|null
+	 */
+	public static function for_rep( $item ) {
+		if ( ! is_array( $item ) ) {
+			return $item;
+		}
+		foreach ( array( 'crm_lead_id', 'last_error', 'attempts', 'duplicate_of', 'deleted_at', 'deleted_by' ) as $key ) {
+			unset( $item[ $key ] );
+		}
+		return $item;
 	}
 }
