@@ -5,6 +5,7 @@ import Icon from '../shared/icons';
 import { formatDate, timeAgo } from '../shared/format';
 import { useFetch, useInterval } from '../shared/hooks';
 import {
+	Alert,
 	Badge,
 	Button,
 	Card,
@@ -110,7 +111,7 @@ function SyncLog( { logs } ) {
 	);
 }
 
-function DetailDrawer( { id, onClose, onChanged } ) {
+function DetailDrawer( { id, onClose, onChanged, onOpen } ) {
 	const [ item, setItem ] = useState( null );
 	const [ busy, setBusy ] = useState( false );
 	const { toast, confirm } = useUI();
@@ -137,6 +138,23 @@ function DetailDrawer( { id, onClose, onChanged } ) {
 		try {
 			await post( '/submissions/retry', { ids: [ id ] } );
 			toast( __( 'Lead re-queued', 'contact-sync' ) );
+			await load();
+			onChanged();
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+		setBusy( false );
+	};
+
+	const decide = async ( decision ) => {
+		setBusy( true );
+		try {
+			await post( '/submissions/review', { ids: [ id ], decision } );
+			toast(
+				decision === 'approve'
+					? __( 'Lead approved and queued', 'contact-sync' )
+					: __( 'Lead rejected as duplicate', 'contact-sync' )
+			);
 			await load();
 			onChanged();
 		} catch ( err ) {
@@ -194,7 +212,26 @@ function DetailDrawer( { id, onClose, onChanged } ) {
 							{ __( 'Delete', 'contact-sync' ) }
 						</Button>
 						<div className="cs-grow" />
-						{ item.status !== 'synced' && (
+						{ item.status === 'review' && (
+							<>
+								<Button
+									icon="x"
+									disabled={ busy }
+									onClick={ () => decide( 'reject' ) }
+								>
+									{ __( 'Reject', 'contact-sync' ) }
+								</Button>
+								<Button
+									variant="primary"
+									icon="check"
+									loading={ busy }
+									onClick={ () => decide( 'approve' ) }
+								>
+									{ __( 'Approve and send', 'contact-sync' ) }
+								</Button>
+							</>
+						) }
+						{ ! [ 'synced', 'review' ].includes( item.status ) && (
 							<Button
 								variant="primary"
 								icon="refresh"
@@ -214,6 +251,38 @@ function DetailDrawer( { id, onClose, onChanged } ) {
 				</div>
 			) : (
 				<>
+					{ item.status === 'review' && item.duplicate_of && (
+						<div className="cs-mb">
+							<Alert
+								tone="warning"
+								title={ __(
+									'Possible duplicate',
+									'contact-sync'
+								) }
+								action={
+									<Button
+										size="sm"
+										onClick={ () =>
+											onOpen( item.duplicate_of )
+										}
+									>
+										{ sprintf(
+											/* translators: %d: submission ID */ __(
+												'Open #%d',
+												'contact-sync'
+											),
+											item.duplicate_of
+										) }
+									</Button>
+								}
+							>
+								{ __(
+									'A lead with the same email was submitted earlier. Approve to send this one to Dynamics 365 anyway, or reject it to keep it out.',
+									'contact-sync'
+								) }
+							</Alert>
+						</div>
+					) }
 					<SubmissionDetails item={ item } admin />
 					<h3 className="cs-section-title">
 						{ __( 'Sync history', 'contact-sync' ) }
@@ -278,6 +347,40 @@ export default function Submissions() {
 					res.queued
 				)
 			);
+			setSelected( [] );
+			reload( true );
+		} catch ( err ) {
+			toast( err.message, 'danger' );
+		}
+	};
+
+	const bulkReview = async ( decision ) => {
+		try {
+			const res = await post( '/submissions/review', {
+				ids: selected,
+				decision,
+			} );
+			const message =
+				decision === 'approve'
+					? sprintf(
+							/* translators: %d: count */ _n(
+								'%d lead approved and queued',
+								'%d leads approved and queued',
+								res.updated,
+								'contact-sync'
+							),
+							res.updated
+					  )
+					: sprintf(
+							/* translators: %d: count */ _n(
+								'%d lead rejected as duplicate',
+								'%d leads rejected as duplicates',
+								res.updated,
+								'contact-sync'
+							),
+							res.updated
+					  );
+			toast( message );
 			setSelected( [] );
 			reload( true );
 		} catch ( err ) {
@@ -383,6 +486,10 @@ export default function Submissions() {
 								label: __( 'Failed', 'contact-sync' ),
 							},
 							{
+								value: 'review',
+								label: __( 'In review', 'contact-sync' ),
+							},
+							{
 								value: 'duplicate',
 								label: __( 'Duplicate', 'contact-sync' ),
 							},
@@ -480,9 +587,32 @@ export default function Submissions() {
 								selected.length
 							) }
 						</span>
-						<Button size="sm" icon="refresh" onClick={ bulkRetry }>
-							{ __( 'Retry sync', 'contact-sync' ) }
-						</Button>
+						{ filters.status === 'review' ? (
+							<>
+								<Button
+									size="sm"
+									icon="check"
+									onClick={ () => bulkReview( 'approve' ) }
+								>
+									{ __( 'Approve and send', 'contact-sync' ) }
+								</Button>
+								<Button
+									size="sm"
+									icon="x"
+									onClick={ () => bulkReview( 'reject' ) }
+								>
+									{ __( 'Reject', 'contact-sync' ) }
+								</Button>
+							</>
+						) : (
+							<Button
+								size="sm"
+								icon="refresh"
+								onClick={ bulkRetry }
+							>
+								{ __( 'Retry sync', 'contact-sync' ) }
+							</Button>
+						) }
 						<Button
 							size="sm"
 							variant="danger-ghost"
@@ -647,6 +777,7 @@ export default function Submissions() {
 				id={ openId }
 				onClose={ () => setOpenId( null ) }
 				onChanged={ () => reload( true ) }
+				onOpen={ setOpenId }
 			/>
 		</>
 	);

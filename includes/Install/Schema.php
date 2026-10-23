@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class Schema {
 
-	const DB_VERSION = '1.0.1';
+	const DB_VERSION = '1.0.2';
 	const OPTION     = 'contact_sync_db_version';
 
 	/**
@@ -28,6 +28,9 @@ class Schema {
 			self::install();
 			if ( $from && version_compare( $from, '1.0.1', '<' ) ) {
 				( new \ContactSync\Crm\SyncJob() )->release_waiting();
+			}
+			if ( $from && version_compare( $from, '1.0.2', '<' ) ) {
+				( new \ContactSync\Submissions\SubmissionRepository() )->backfill_emails();
 			}
 		}
 	}
@@ -93,6 +96,9 @@ class Schema {
 				source varchar(20) NOT NULL DEFAULT 'form',
 				data longtext NOT NULL,
 				sync_status varchar(20) NOT NULL DEFAULT 'queued',
+				email varchar(190) DEFAULT NULL,
+				duplicate_of bigint(20) unsigned DEFAULT NULL,
+				reviewed_at datetime DEFAULT NULL,
 				crm_lead_id varchar(64) DEFAULT NULL,
 				attempts smallint(5) unsigned NOT NULL DEFAULT 0,
 				last_error text NULL,
@@ -104,6 +110,7 @@ class Schema {
 				KEY agency_id (agency_id),
 				KEY batch_id (batch_id),
 				KEY sync_status (sync_status),
+				KEY email (email),
 				KEY created_at (created_at)
 			) {$charset};
 

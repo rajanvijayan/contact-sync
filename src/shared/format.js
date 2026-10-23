@@ -6,6 +6,7 @@ export const STATUS = {
 	synced: { label: __( 'Synced', 'contact-sync' ), tone: 'success' },
 	failed: { label: __( 'Failed', 'contact-sync' ), tone: 'danger' },
 	duplicate: { label: __( 'Duplicate', 'contact-sync' ), tone: 'warning' },
+	review: { label: __( 'In review', 'contact-sync' ), tone: 'warning' },
 };
 
 const AWAITING = {

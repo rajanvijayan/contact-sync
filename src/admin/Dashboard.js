@@ -1,5 +1,5 @@
 import { useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import { post } from '../shared/api';
 import BarChart, { RankList } from '../shared/BarChart';
 import Icon from '../shared/icons';
@@ -199,6 +199,37 @@ export default function Dashboard() {
 					>
 						{ __(
 							'New leads are stored but not sent to Dynamics 365 until you resume sync.',
+							'contact-sync'
+						) }
+					</Alert>
+				</div>
+			) }
+			{ s.review > 0 && (
+				<div className="cs-mb">
+					<Alert
+						tone="warning"
+						title={ sprintf(
+							/* translators: %d: count */ _n(
+								'%d possible duplicate is waiting for review',
+								'%d possible duplicates are waiting for review',
+								s.review,
+								'contact-sync'
+							),
+							s.review
+						) }
+						action={
+							<Button
+								size="sm"
+								onClick={ () =>
+									go( 'submissions?status=review' )
+								}
+							>
+								{ __( 'Review', 'contact-sync' ) }
+							</Button>
+						}
+					>
+						{ __(
+							'These leads share an email with an earlier submission and are held until you approve or reject them.',
 							'contact-sync'
 						) }
 					</Alert>

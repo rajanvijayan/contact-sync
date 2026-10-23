@@ -37,13 +37,31 @@ export function SubmissionDetails( { item, admin = false } ) {
 					</Alert>
 				</div>
 			) }
+			{ item.status === 'review' && (
+				<div className="cs-mb">
+					<Alert
+						tone="warning"
+						title={ __( 'In review', 'contact-sync' ) }
+					>
+						{ __(
+							'A lead with this email was submitted before, so this one is held until an administrator approves it.',
+							'contact-sync'
+						) }
+					</Alert>
+				</div>
+			) }
 			{ item.status === 'duplicate' && (
 				<div className="cs-mb">
 					<Alert tone="warning">
-						{ __(
-							'An open lead with this email already existed in Dynamics 365, so no new record was created.',
-							'contact-sync'
-						) }
+						{ item.crm_lead_id
+							? __(
+									'An open lead with this email already existed in Dynamics 365, so no new record was created.',
+									'contact-sync'
+							  )
+							: __(
+									'An administrator marked this lead as a duplicate of an earlier submission, so it was not sent to Dynamics 365.',
+									'contact-sync'
+							  ) }
 					</Alert>
 				</div>
 			) }

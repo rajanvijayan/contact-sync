@@ -8,6 +8,7 @@
 namespace ContactSync\Rest;
 
 use ContactSync\Crm\SyncJob;
+use ContactSync\Submissions\DuplicateReview;
 use ContactSync\Submissions\SubmissionRepository;
 use WP_Error;
 use WP_REST_Request;
@@ -54,6 +55,14 @@ class SubmissionsController extends Controller {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'retry' ),
+				'permission_callback' => $perm,
+			)
+		);
+		$this->route(
+			'/submissions/review',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( $this, 'review' ),
 				'permission_callback' => $perm,
 			)
 		);
@@ -154,6 +163,23 @@ class SubmissionsController extends Controller {
 			return new WP_Error( 'cs_invalid', __( 'Nothing to retry.', 'contact-sync' ), array( 'status' => 400 ) );
 		}
 		return $this->respond( array( 'queued' => ( new SyncJob() )->retry( $ids ) ) );
+	}
+
+	/**
+	 * POST /submissions/review — { ids: [], decision: "approve"|"reject" } for held duplicates.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return mixed
+	 */
+	public function review( WP_REST_Request $request ) {
+		$ids      = array_map( 'intval', $this->array_param( $request, 'ids' ) );
+		$decision = (string) $request['decision'];
+		if ( ! $ids || ! in_array( $decision, array( 'approve', 'reject' ), true ) ) {
+			return new WP_Error( 'cs_invalid', __( 'Choose leads and whether to approve or reject them.', 'contact-sync' ), array( 'status' => 400 ) );
+		}
+		$review = new DuplicateReview();
+		$count  = 'approve' === $decision ? $review->approve( $ids ) : $review->reject( $ids );
+		return $this->respond( array( 'updated' => $count ) );
 	}
 
 	/**

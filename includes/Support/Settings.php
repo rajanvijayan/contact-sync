@@ -34,6 +34,7 @@ class Settings {
 				'enabled'          => true,
 				'max_attempts'     => 5,
 				'duplicate_check'  => 'off',
+				'hold_duplicates'  => true,
 				'agency_attribute' => '',
 				'rep_attribute'    => '',
 				'rep_email_attr'   => '',
@@ -144,6 +145,9 @@ class Settings {
 			$s = $input['sync'];
 			if ( isset( $s['enabled'] ) ) {
 				$clean['sync']['enabled'] = (bool) $s['enabled'];
+			}
+			if ( isset( $s['hold_duplicates'] ) ) {
+				$clean['sync']['hold_duplicates'] = (bool) $s['hold_duplicates'];
 			}
 			if ( isset( $s['append_to_notes'] ) ) {
 				$clean['sync']['append_to_notes'] = (bool) $s['append_to_notes'];

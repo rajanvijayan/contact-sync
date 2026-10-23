@@ -158,7 +158,8 @@ With no field selected, the **Form settings** panel shows the full mapping and l
   - **Queued:** waiting to be sent, or waiting for an automatic retry.
   - **Syncing:** being sent now.
   - **Synced:** created in Dynamics; the lead ID is shown.
-  - **Duplicate:** an open Lead with the same email already existed (only when duplicate checking is on).
+  - **In review:** the email matches an earlier submission (or an earlier row in the same bulk upload), so the lead is held and not sent until you decide. Open it to see the earlier lead, then **Approve and send** or **Reject**. With the *In review* filter selected you can approve or reject several rows at once. Turn this off with **Hold duplicates for review** under Settings › Sync.
+  - **Duplicate:** an open Lead with the same email already existed in Dynamics (only when Dynamics duplicate checking is on), or you rejected the lead from review.
   - **Failed:** Dynamics rejected it, or all retries were used. The error is shown.
 - Click a row to see every answer, who submitted it, the Dynamics lead ID and the **sync history**. Each attempt shows the exact payload sent and the response under *Technical details*.
 - **Retry sync** re-queues a lead (also available for several selected rows).

@@ -104,6 +104,10 @@ export default function Submissions( { scope } ) {
 								label: __( 'Failed', 'contact-sync' ),
 							},
 							{
+								value: 'review',
+								label: __( 'In review', 'contact-sync' ),
+							},
+							{
 								value: 'duplicate',
 								label: __( 'Duplicate', 'contact-sync' ),
 							},

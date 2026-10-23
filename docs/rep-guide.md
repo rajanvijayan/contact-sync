@@ -99,6 +99,7 @@ Click **Import N leads**. A progress screen shows them being delivered.
 | Queued | Waiting to be sent (usually seconds) |
 | Syncing | Being sent now |
 | Delivered / Synced | The sales team has it |
+| In review | A lead with this email was submitted before; an administrator will approve or reject it. Bulk uploads flag these rows on the Review step |
 | Duplicate | This contact was already an open lead, so no copy was created |
 | Failed | It could not be delivered automatically; the admin team has been alerted |
 

@@ -816,6 +816,15 @@ body.cs-portal {
 			color: var(--cs-danger);
 		}
 	}
+
+	&.is-warning {
+		background: var(--cs-warning-bg);
+		border-color: var(--cs-warning-border);
+
+		.cs-icon {
+			color: var(--cs-warning);
+		}
+	}
 }
 
 .cs-review-summary__filter {

@@ -204,7 +204,8 @@ function ImportProgress( { result, onReset } ) {
 		delivering
 	);
 	const c = batch.counts;
-	const done = c.synced + c.failed + c.duplicate;
+	// Leads held for duplicate review are out of the rep's hands, so they count as processed.
+	const done = c.synced + c.failed + c.duplicate + c.review;
 
 	return (
 		<Card>
@@ -240,6 +241,20 @@ function ImportProgress( { result, onReset } ) {
 						) }
 					</span>
 				</div>
+				{ c.review > 0 && (
+					<Alert tone="warning">
+						{ sprintf(
+							/* translators: %d: number of leads */
+							_n(
+								'%d lead matches an earlier submission and is held until an administrator approves it.',
+								'%d leads match earlier submissions and are held until an administrator approves them.',
+								c.review,
+								'contact-sync'
+							),
+							c.review
+						) }
+					</Alert>
+				) }
 				{ batch.held && (
 					<Alert tone="info">
 						{ __(
@@ -269,6 +284,12 @@ function ImportProgress( { result, onReset } ) {
 						<strong>{ c.queued + c.syncing }</strong>
 						<span>{ __( 'Pending', 'contact-sync' ) }</span>
 					</div>
+					{ c.review > 0 && (
+						<div>
+							<strong>{ c.review }</strong>
+							<span>{ __( 'In review', 'contact-sync' ) }</span>
+						</div>
+					) }
 					<div className={ c.failed ? 'is-danger' : '' }>
 						<strong>{ c.failed }</strong>
 						<span>{ __( 'Failed', 'contact-sync' ) }</span>
@@ -506,12 +527,21 @@ export default function BulkUpload() {
 		? report.filter( ( r ) => Object.keys( r.errors ).length ).length
 		: 0;
 	const validCount = report ? report.length - invalidCount : 0;
+	const duplicateCount = report
+		? report.filter( ( r ) => r.duplicate ).length
+		: 0;
 	const data = report ? mapped() : [];
 	const previewRows = report
 		? report
-				.filter(
-					( r ) => filter === 'all' || Object.keys( r.errors ).length
-				)
+				.filter( ( r ) => {
+					if ( filter === 'errors' ) {
+						return Object.keys( r.errors ).length > 0;
+					}
+					if ( filter === 'duplicates' ) {
+						return !! r.duplicate;
+					}
+					return true;
+				} )
 				.slice( 0, PREVIEW_LIMIT )
 		: [];
 	const previewFields = fields
@@ -787,6 +817,20 @@ export default function BulkUpload() {
 								</span>
 							</div>
 						</div>
+						{ duplicateCount > 0 && (
+							<div className="cs-review-summary__item is-warning">
+								<Icon name="copy" size={ 20 } />
+								<div>
+									<strong>{ duplicateCount }</strong>
+									<span>
+										{ __(
+											'Possible duplicates',
+											'contact-sync'
+										) }
+									</span>
+								</div>
+							</div>
+						) }
 						<div className="cs-review-summary__filter">
 							<Segmented
 								size="sm"
@@ -803,6 +847,18 @@ export default function BulkUpload() {
 										label: __( 'Errors', 'contact-sync' ),
 										count: invalidCount,
 									},
+									...( duplicateCount
+										? [
+												{
+													value: 'duplicates',
+													label: __(
+														'Duplicates',
+														'contact-sync'
+													),
+													count: duplicateCount,
+												},
+										  ]
+										: [] ),
 								] }
 							/>
 						</div>
@@ -825,16 +881,50 @@ export default function BulkUpload() {
 								key: 'status',
 								label: __( 'Status', 'contact-sync' ),
 								width: 110,
-								render: ( r ) =>
-									Object.keys( r.errors ).length ? (
-										<Badge tone="danger" icon="x">
-											{ __( 'Error', 'contact-sync' ) }
-										</Badge>
-									) : (
+								render: ( r ) => {
+									if ( Object.keys( r.errors ).length ) {
+										return (
+											<Badge tone="danger" icon="x">
+												{ __(
+													'Error',
+													'contact-sync'
+												) }
+											</Badge>
+										);
+									}
+									if ( r.duplicate ) {
+										return (
+											<span
+												title={
+													r.duplicate === 'file'
+														? __(
+																'Same email as an earlier row in this file',
+																'contact-sync'
+														  )
+														: __(
+																'Same email as a lead already submitted',
+																'contact-sync'
+														  )
+												}
+											>
+												<Badge
+													tone="warning"
+													icon="copy"
+												>
+													{ __(
+														'Duplicate',
+														'contact-sync'
+													) }
+												</Badge>
+											</span>
+										);
+									}
+									return (
 										<Badge tone="success" icon="check">
 											{ __( 'Valid', 'contact-sync' ) }
 										</Badge>
-									),
+									);
+								},
 							},
 							...previewFields.map( ( f ) => ( {
 								key: f.key,

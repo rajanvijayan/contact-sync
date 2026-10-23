@@ -432,13 +432,25 @@ export default function Settings() {
 									'contact-sync'
 								) }
 							/>
+							<Switch
+								checked={ settings.sync.hold_duplicates }
+								onChange={ set( 'sync', 'hold_duplicates' ) }
+								label={ __(
+									'Hold duplicates for review',
+									'contact-sync'
+								) }
+								description={ __(
+									'A lead with the same email as an earlier submission (including earlier rows in the same upload) waits on the Submissions page until you approve or reject it.',
+									'contact-sync'
+								) }
+							/>
 							<Field
 								label={ __(
 									'Duplicate handling',
 									'contact-sync'
 								) }
 								help={ __(
-									'Checks for an open lead with the same email before creating one.',
+									'Checks Dynamics 365 for an open lead with the same email before creating one. Leads you approve from review skip this check.',
 									'contact-sync'
 								) }
 							>
